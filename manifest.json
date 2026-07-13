@@ -1,5 +1,5 @@
 {
-  "name": "TSMFM Dashboard - Ayoub Taoufik",
+  "name": "TSMFM Dashboard",
   "short_name": "TSMFM",
   "start_url": "/",
   "display": "standalone",
@@ -7,9 +7,9 @@
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2921/2921222.png",
+      "src": "/14822.jpg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }
