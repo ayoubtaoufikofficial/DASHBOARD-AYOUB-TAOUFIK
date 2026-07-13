@@ -2,24 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght=500;600;700&family=Inter:wght=400;500;600;700&family=JetBrains+Mono:wght=500&display=swap');
 
 /* ============================================================
-   DESIGN TOKENS
-   Palette derived from the TSMFM module tree (Arbre des modules):
-   each category keeps its own identity color across the whole OS.
+   DESIGN TOKENS - TSMFM OS
    ============================================================ */
 :root {
-  --bg-0: #0a0e17;
-  --bg-1: #0e1420;
-  --bg-2: #131a29;
+  /* تعديل الألوان الافتراضية لتصبح بنفسجية داكنة غنية وعميقة تناسب النيون */
+  --bg-0: #0b071e; 
+  --bg-1: #110b2c;
+  --bg-2: #170f3c;
   --ink-0: #f4f6fb;
   --ink-1: #b9c2d6;
   --ink-2: #79839c;
   --line: rgba(255, 255, 255, 0.08);
-  --glass-fill: rgba(255, 255, 255, 0.055);
-  --glass-fill-strong: rgba(255, 255, 255, 0.09);
-  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-fill: rgba(255, 255, 255, 0.04);
+  --glass-fill-strong: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.1);
 
   --cat-langues: #a78bfa;
   --cat-culture: #34d399;
@@ -34,8 +33,8 @@
   --warn: #fbbf24;
   --bad: #fb7185;
 
-  --shadow-lg: 0 24px 60px -20px rgba(0, 0, 0, 0.55);
-  --shadow-sm: 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 24px 60px -20px rgba(0, 0, 0, 0.65);
+  --shadow-sm: 0 8px 24px -12px rgba(0, 0, 0, 0.55);
 }
 
 html[data-theme='light'] {
@@ -106,12 +105,12 @@ body {
 .ambient-blob {
   position: absolute;
   border-radius: 999px;
-  filter: blur(90px);
-  opacity: 0.35;
+  filter: blur(100px);
+  opacity: 0.45;
   will-change: transform;
 }
 
-html[data-theme='light'] .ambient-blob { opacity: 0.28; }
+html[data-theme='light'] .ambient-blob { opacity: 0.22; }
 
 .blob-a {
   width: 46vw; height: 46vw;
@@ -126,8 +125,8 @@ html[data-theme='light'] .ambient-blob { opacity: 0.28; }
   animation: driftB 32s ease-in-out infinite;
 }
 .blob-c {
-  width: 32vw; height: 32vw;
-  top: 30%; right: 18%;
+  width: 35vw; height: 35vw;
+  top: 25%; right: 15%;
   background: radial-gradient(circle at 50% 50%, var(--cat-langues), transparent 70%);
   animation: driftC 22s ease-in-out infinite;
 }
@@ -185,14 +184,25 @@ html[data-theme='light'] .ambient-blob { opacity: 0.28; }
   transition: transform 0.35s cubic-bezier(.2,.8,.2,1), box-shadow 0.35s ease, background 0.35s ease, border-color 0.35s ease;
 }
 .glass-hover:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(255,255,255,0.22);
+  border-color: rgba(167, 139, 250, 0.4);
 }
 
 /* ============================================================
-   MOTION UTILITIES
+   CUSTOM PROFILE & GLOW EFFECTS
    ============================================================ */
+.profile-avatar-glow {
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 0 25px rgba(167, 139, 250, 0.45), 0 0 50px rgba(96, 165, 250, 0.25);
+}
+
+.profile-avatar-glow:hover {
+  transform: scale(1.06) rotate(3deg);
+  box-shadow: 0 0 40px rgba(167, 139, 250, 0.75), 0 0 80px rgba(96, 165, 250, 0.5);
+}
+
+/* MOTION UTILITIES */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -239,7 +249,6 @@ html[data-theme='light'] .ambient-blob { opacity: 0.28; }
 .stagger > *:nth-child(7) { animation-delay: 0.26s; }
 .stagger > *:nth-child(8) { animation-delay: 0.30s; }
 
-/* thin gradient rule used as a section divider (echoes the tree diagram's branches) */
 .branch-rule {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--glass-border) 20%, var(--glass-border) 80%, transparent);
@@ -255,35 +264,4 @@ input[type='number'] { -moz-appearance: textfield; }
 .focus-ring:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-/* خلفية بنفسجية متدرجة مريحة للعين وتناسب النيون */
-body {
-  margin: 0;
-  background: linear-gradient(135deg, #13072e 0%, #090314 100%);
-  color: #ffffff;
-  min-height: 100vh;
-  font-family: system-ui, -apple-system, sans-serif;
-}
-
-/* تأثير التوهج الخاص بصورتك الشخصية (يتفاعل عند تمرير الفأرة) */
-.profile-avatar-glow {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 20px rgba(147, 51, 234, 0.5), 0 0 40px rgba(59, 130, 246, 0.3);
-}
-
-.profile-avatar-glow:hover {
-  transform: scale(1.05) rotate(2deg);
-  box-shadow: 0 0 35px rgba(147, 51, 234, 0.8), 0 0 70px rgba(59, 130, 246, 0.6);
-}
-
-/* بطاقات شفافة زجاجية مخصصة للوحة التحكم */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: border-color 0.3s ease, transform 0.3s ease;
-}
-
-.glass-panel:hover {
-  border-color: rgba(147, 51, 234, 0.4);
 }
