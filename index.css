@@ -2,7 +2,280 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+
+/* ============================================================
+   DESIGN TOKENS — Violet / Liquid Glass
+   Category colors still trace back to the TSMFM module tree,
+   but the OS itself now speaks in violet, indigo & fuchsia.
+   ============================================================ */
+:root {
+  --bg-0: #0b0713;
+  --bg-1: #120c1e;
+  --bg-2: #171029;
+  --ink-0: #f6f3fc;
+  --ink-1: #c3b8db;
+  --ink-2: #8b7fa8;
+  --line: rgba(196, 181, 253, 0.12);
+  --glass-fill: rgba(167, 139, 250, 0.07);
+  --glass-fill-strong: rgba(167, 139, 250, 0.13);
+  --glass-border: rgba(196, 181, 253, 0.18);
+
+  --cat-langues: #a78bfa;
+  --cat-culture: #34d399;
+  --cat-gestion: #fb923c;
+  --cat-analyse: #f472b6;
+  --cat-conception: #60a5fa;
+  --cat-fabrication: #fbbf24;
+
+  /* selectable accent (overridden at runtime by the theme picker) */
+  --accent: #b794f6;
+  --accent-2: #e9d5ff;
+  --accent-glow: #8b5cf6;
+
+  --amb-1: #7c3aed;
+  --amb-2: #d946ef;
+  --amb-3: #6366f1;
+
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #fb7185;
+
+  --shadow-lg: 0 24px 60px -20px rgba(30, 10, 60, 0.6);
+  --shadow-sm: 0 8px 24px -12px rgba(30, 10, 60, 0.5);
+  --shadow-glow: 0 0 0 1px var(--glass-border), 0 0 32px -6px var(--accent-glow);
+}
+
+html[data-theme='light'] {
+  --bg-0: #f3eefc;
+  --bg-1: #ece3fa;
+  --bg-2: #e3d6f7;
+  --ink-0: #1c1230;
+  --ink-1: #4a3b6b;
+  --ink-2: #7a6a99;
+  --line: rgba(90, 40, 160, 0.1);
+  --glass-fill: rgba(255, 255, 255, 0.55);
+  --glass-fill-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(120, 60, 200, 0.14);
+  --shadow-lg: 0 24px 60px -24px rgba(90, 40, 160, 0.25);
+  --shadow-sm: 0 8px 20px -12px rgba(90, 40, 160, 0.18);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-0);
+  color: var(--ink-0);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background 0.5s ease, color 0.5s ease;
 }
+
+.font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.01em; }
+.font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+::selection { background: var(--accent-2); color: #1c1230; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-2); }
+
+/* ============================================================
+   AMBIENT BACKGROUND
+   ============================================================ */
+.ambient-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.ambient-blob { position: absolute; border-radius: 999px; filter: blur(90px); opacity: 0.4; will-change: transform; }
+html[data-theme='light'] .ambient-blob { opacity: 0.25; }
+
+.blob-a { width: 46vw; height: 46vw; top: -12vw; left: -8vw; background: radial-gradient(circle at 30% 30%, var(--amb-1), transparent 70%); animation: driftA 26s ease-in-out infinite; }
+.blob-b { width: 40vw; height: 40vw; bottom: -14vw; right: -6vw; background: radial-gradient(circle at 60% 60%, var(--amb-2), transparent 70%); animation: driftB 32s ease-in-out infinite; }
+.blob-c { width: 32vw; height: 32vw; top: 30%; right: 18%; background: radial-gradient(circle at 50% 50%, var(--amb-3), transparent 70%); animation: driftC 22s ease-in-out infinite; }
+
+@keyframes driftA { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6vw, 8vw) scale(1.1); } }
+@keyframes driftB { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-5vw, -6vw) scale(1.08); } }
+@keyframes driftC { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-4vw, 5vw) scale(0.94); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob, * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* ============================================================
+   GLASS SURFACES
+   ============================================================ */
+.glass {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: var(--shadow-sm);
+}
+.glass-strong {
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow: var(--shadow-lg);
+}
+.glass-hover { transition: transform 0.35s cubic-bezier(.2,.8,.2,1), box-shadow 0.35s ease, background 0.35s ease, border-color 0.35s ease; }
+.glass-hover:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: rgba(196,181,253,0.32); }
+
+.selected-card {
+  border-color: var(--accent) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+/* ============================================================
+   MOTION UTILITIES
+   ============================================================ */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.anim-in { animation: fadeUp 0.5s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes popIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+.anim-pop { animation: popIn 0.35s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.anim-slide-down { animation: slideDown 0.3s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent); background-size: 200% 100%; animation: shimmer 2.2s linear infinite; }
+
+@keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+.pulse-dot { animation: pulseDot 1.8s ease-in-out infinite; }
+
+.press-scale { transition: transform 0.15s ease; }
+.press-scale:active { transform: scale(0.96); }
+
+.stagger > * { animation: fadeUp 0.5s cubic-bezier(.2,.8,.2,1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger > *:nth-child(7) { animation-delay: 0.26s; }
+.stagger > *:nth-child(8) { animation-delay: 0.30s; }
+
+.branch-rule { height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border) 20%, var(--glass-border) 80%, transparent); }
+
+input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; }
+
+.focus-ring:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ============================================================
+   RIPPLE — click / selection feedback
+   ============================================================ */
+.ripple-host { position: relative; overflow: hidden; }
+.ripple-dot {
+  position: absolute;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: rippleAnim 0.65s ease-out forwards;
+}
+@keyframes rippleAnim {
+  from { width: 0; height: 0; opacity: 0.55; }
+  to { width: 380px; height: 380px; opacity: 0; }
+}
+
+/* ============================================================
+   CHIPS — selectable filters
+   ============================================================ */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 500;
+  border: 1px solid var(--glass-border); color: var(--ink-1);
+  background: var(--glass-fill); cursor: pointer;
+  transition: all 0.25s cubic-bezier(.2,.8,.2,1);
+  white-space: nowrap;
+}
+.chip:hover { transform: translateY(-1px); border-color: var(--accent); color: var(--ink-0); }
+.chip.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #1c1230; border-color: transparent; font-weight: 700;
+  box-shadow: 0 6px 18px -6px var(--accent-glow);
+}
+
+/* ============================================================
+   AVATAR FRAMES — echo the halo/aura portrait style
+   ============================================================ */
+.avatar-wrap { position: relative; display: inline-flex; }
+.avatar-img {
+  position: relative; z-index: 2; object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.18);
+}
+.avatar-aura::before {
+  content: ''; position: absolute; inset: -18%; z-index: 0; border-radius: 999px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 68%);
+  filter: blur(18px); opacity: 0.75;
+  animation: auraPulse 4s ease-in-out infinite;
+}
+@keyframes auraPulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 0.95; transform: scale(1.08); } }
+.avatar-ring::after {
+  content: ''; position: absolute; inset: -6px; z-index: 1; border-radius: inherit;
+  border: 3px solid var(--accent); box-shadow: 0 0 22px -2px var(--accent-glow);
+}
+
+/* ============================================================
+   BULK SELECTION BAR
+   ============================================================ */
+.bulk-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 16px;
+  margin-bottom: 12px;
+}
+
+/* checkbox */
+.check-box {
+  width: 18px; height: 18px; border-radius: 6px;
+  border: 1.5px solid var(--glass-border); display: inline-flex;
+  align-items: center; justify-content: center; cursor: pointer;
+  transition: all 0.2s ease; flex-shrink: 0;
+}
+.check-box.checked { background: var(--accent); border-color: var(--accent); }
+
+/* modal backdrop */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(10, 4, 20, 0.55); backdrop-filter: blur(6px); z-index: 50; }
+.modal-panel { animation: popIn 0.3s cubic-bezier(.2,.8,.2,1) both; }
+
+/* color swatch button */
+.swatch { width: 30px; height: 30px; border-radius: 10px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; border: 2px solid rgba(255,255,255,0.15); }
+.swatch:hover { transform: scale(1.1); }
+.swatch.active { box-shadow: 0 0 0 3px var(--bg-1), 0 0 0 5px var(--accent); transform: scale(1.08); }
+
+/* ============================================================
+   CROWN — sits above the profile name
+   ============================================================ */
+@keyframes crownFloat {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-4px) rotate(4deg); }
+}
+.crown-icon {
+  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.65));
+  animation: crownFloat 3.2s ease-in-out infinite;
+}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+.toast-stack {
+  position: fixed; bottom: 20px; right: 20px; z-index: 60;
+  display: flex; flex-direction: column; gap: 10px;
+  max-width: min(340px, calc(100vw - 40px));
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px) scale(0.96); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(24px) scale(0.96); }
+}
+.toast-item { animation: toastIn 0.35s cubic-bezier(.2,.8,.2,1) both; }
+.toast-item.leaving { animation: toastOut 0.25s ease-in forwards; }
