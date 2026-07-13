@@ -356,7 +356,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [modules, setModules] = useState(RAW_MODULES);
+const [modules, setModules] = useState(() => {
+  const saved = localStorage.getItem('ayoub-dashboard-data');
+  return saved ? JSON.parse(saved) : RAW_MODULES;
+});
+
+useEffect(() => {
+  localStorage.setItem('ayoub-dashboard-data', JSON.stringify(modules));
+}, [modules]);
   const [weights, setWeights] = useState({ controle: 25, tp: 25, efm: 25, regional: 25 });
 
   const [studyHours, setStudyHours] = useState(18);
