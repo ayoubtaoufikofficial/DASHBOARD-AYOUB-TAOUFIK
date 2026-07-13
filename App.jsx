@@ -1234,7 +1234,7 @@ function App() {
         {/* حاوية الصورة الشخصية */}
         <div className="relative inline-block mb-6">
           <img
-            src={profileImg}
+            src={FB_IMG_1750515617631.jpg}
             alt="Ayoub Taoufik"
             className={`w-32 h-32 rounded-full object-cover border-2 transition-all duration-500 ${
               glowActive ? 'profile-avatar-glow' : ''
