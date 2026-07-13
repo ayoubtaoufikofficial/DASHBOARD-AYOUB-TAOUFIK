@@ -6,6 +6,11 @@ import {
   Download, Upload, BellRing, X,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
+import AuthScreen from "./AuthScreen";
+import { LogOut } from "lucide-react";
 
 /* ---------------------------------------------------------------------
    بيانات الموديولات الثابتة (مستخرجة من شجرة السنة الثانية TSMFM)
@@ -108,21 +113,24 @@ function LED({ active, color = "amber" }) {
 }
 
 /* ---------------------------------------------------------------------
-   التطبيق الرئيسي
+   لوحة القيادة (نفس التصميم القديم بالضبط) — دابا كتاخد "user" من Firebase
+   وكتخزن/كتقرا البيانات من Firestore بدل localStorage
 --------------------------------------------------------------------- */
-export default function App() {
+function Dashboard({ user }) {
   const [state, setState] = useState(defaultState());
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState("overview");
   const saveTimer = useRef(null);
+  const userDocRef = doc(db, "users", user.uid);
 
-  // تحميل البيانات المحفوظة
+  // تحميل البيانات المحفوظة من Firestore
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const res = await window.storage.get(STORAGE_KEY);
-        if (res && res.value) {
-          const parsed = JSON.parse(res.value);
+        const snap = await getDoc(userDocRef);
+        if (!cancelled && snap.exists() && snap.data().payload) {
+          const parsed = JSON.parse(snap.data().payload);
           const merged = defaultState();
           merged.modules = { ...merged.modules, ...(parsed.modules || {}) };
           merged.teachers = parsed.teachers || [];
@@ -134,25 +142,28 @@ export default function App() {
           setState(merged);
         }
       } catch (e) {
-        /* لا توجد بيانات محفوظة بعد */
+        console.error("load failed", e);
       } finally {
-        setLoaded(true);
+        if (!cancelled) setLoaded(true);
       }
     })();
-  }, []);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.uid]);
 
-  // حفظ تلقائي (مع تأخير بسيط)
+  // حفظ تلقائي فـ Firestore (مع تأخير بسيط)
   useEffect(() => {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        await window.storage.set(STORAGE_KEY, JSON.stringify(state));
+        await setDoc(userDocRef, { payload: JSON.stringify(state), updatedAt: Date.now() });
       } catch (e) {
         console.error("save failed", e);
       }
-    }, 500);
+    }, 600);
     return () => clearTimeout(saveTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, loaded]);
 
   // نسخة احتياطية: تصدير JSON
@@ -316,9 +327,14 @@ export default function App() {
                 <Upload className="w-4 h-4" />
               </button>
               <input ref={importInputRef} type="file" accept="application/json" onChange={importData} className="hidden" />
+              <button onClick={() => signOut(auth)} title="تسجيل الخروج"
+                className="p-2 rounded-md bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-rose-300 hover:border-rose-500/40">
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-6">
+            <div className="hidden md:block text-xs text-slate-500 font-mono">{user.email}</div>
             <Gauge20 value={overallAvg} />
             <div className="hidden sm:flex flex-col gap-1 text-sm font-mono">
               <div className="flex items-center gap-2"><span className="text-slate-500">التمكن العام</span><span className="text-amber-300">{overallMastery}%</span></div>
@@ -403,6 +419,33 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+/* ---------------------------------------------------------------------
+   App الرئيسي: كيتحقق من حالة تسجيل الدخول (Firebase Auth)
+   ويعرض شاشة الدخول أو الـ Dashboard حسب الحالة
+--------------------------------------------------------------------- */
+export default function App() {
+  const [user, setUser] = useState(undefined); // undefined = كيتحقق, null = ماشي داخل, object = داخل
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return unsub;
+  }, []);
+
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-500 font-mono text-sm">كيتحقق من الحساب...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  return <Dashboard user={user} />;
 }
 
 /* ---------------------------------------------------------------------
@@ -1020,42 +1063,3 @@ function AiTab({ state, moduleAvg }) {
     </div>
   );
 }
-// --- بداية التتمة: إصلاح الـ Sidebar ووضع صورة البروفايل ---
-
-{/* هذا الجزء يوضع في مكان الـ Sidebar في كودك الأصلي */}
-<aside
-  className={`fixed inset-y-0 left-0 z-50 w-72 bg-gray-900 transition-transform duration-300 lg:static lg:translate-x-0 shadow-2xl ${
-    sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-  }`}
->
-  <div className="h-full p-4 flex flex-col">
-    {/* بطاقة البروفايل الشخصي */}
-    <div className="flex items-center gap-3 px-2 py-4 border-b border-gray-800">
-      <img 
-        src="/FB_IMG_1750515617631.jpg" 
-        alt="Ayoub Taoufik" 
-        className="w-12 h-12 rounded-full object-cover border-2 border-blue-500"
-      />
-      <div className="flex-1">
-        <h2 className="font-bold text-white text-sm">Ayoub Taoufik</h2>
-        <p className="text-[10px] text-gray-400">TSMFM Student</p>
-      </div>
-      {/* زر إغلاق القائمة في الموبايل */}
-      <button className="lg:hidden p-1 text-gray-400" onClick={() => setSidebarOpen(false)}>
-        <X size={20} />
-      </button>
-    </div>
-
-    {/* باقي القائمة يوضع هنا... */}
-  </div>
-</aside>
-
-{/* زر فتح القائمة (يجب أن يكون في الجزء العلوي من الـ Main) */}
-<button 
-  className="lg:hidden p-2 text-white bg-gray-800 rounded-lg" 
-  onClick={() => setSidebarOpen(true)}
->
-  <Menu size={24} />
-</button>
-
-// --- نهاية التتمة ---
