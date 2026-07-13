@@ -559,8 +559,7 @@ export default function App() {
 
       <div className="relative z-10 flex min-h-screen">
         {/* SIDEBAR */}
-        <aside className={`fixed lg:static z-40 h-screen lg:h-auto w-72 shrink-0 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-          <div className="h-full lg:h-screen lg:sticky lg:top-0 p-4 flex flex-col">
+      <aside className={`fixed lg:static top-0 left-0 z-40 h-screen lg:h-auto w-72 shrink-0 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <GlassCard className="glass-strong p-4 flex-1 flex flex-col overflow-hidden">
               <div className="flex items-center gap-2 px-2 pb-4">
                 <Avatar size={36} frame="plain" rounded="rounded-xl" />
