@@ -599,7 +599,6 @@ export default function App() {
                 {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
               </RippleButton>
             </GlassCard>
-          </div>
         </aside>
 
         {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
