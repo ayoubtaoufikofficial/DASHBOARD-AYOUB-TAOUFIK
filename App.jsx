@@ -183,7 +183,7 @@ function SectionTitle({ eyebrow, title, action }) {
     <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
       <div>
         {eyebrow && <div className="text-xs uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--ink-2)' }}>{eyebrow}</div>}
-        <h2 className="font-display text-xl font-semibold" style={{ color: 'var(--ink-0)' }}>{title}</h2>
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} bg-slate-950 border-r border-slate-800`}
       </div>
       {action}
     </div>
