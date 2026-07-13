@@ -1,1159 +1,1022 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Home, Boxes, ClipboardCheck, FileCheck2, Wrench, Award, Flag,
-  CalendarCheck2, UserSquare2, Users, CalendarDays, ListTodo, Target,
-  FileText, StickyNote, BarChart3, FileBarChart2, Bell, Settings as SettingsIcon,
-  Bot, Sun, Moon, Menu, X, Plus, Trash2, Flame, Clock, TrendingUp,
-  CheckCircle2, Circle, Sparkles, GraduationCap, ChevronRight, Search,
-} from 'lucide-react';
+  Gauge, Wrench, Users, ClipboardList, BookOpen, NotebookPen,
+  MessageSquare, Plus, Trash2, ChevronDown, ChevronUp, Star,
+  Clock, Target, AlertTriangle, Send, Loader2, CheckCircle2,
+  Download, Upload, BellRing, X,
+} from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 
-/* ============================================================
-   STATIC DATA — sourced from the TSMFM 2nd-year module tree
-   ============================================================ */
-const CATEGORIES = [
-  { id: 'langues', label: 'Langues & Communication', color: 'var(--cat-langues)' },
-  { id: 'culture', label: 'Culture & Développement Personnel', color: 'var(--cat-culture)' },
-  { id: 'gestion', label: 'Gestion & Organisation Industrielle', color: 'var(--cat-gestion)' },
-  { id: 'analyse', label: 'Analyse & Méthodes', color: 'var(--cat-analyse)' },
-  { id: 'conception', label: 'Conception & Outillages', color: 'var(--cat-conception)' },
-  { id: 'fabrication', label: 'Fabrication & Production', color: 'var(--cat-fabrication)' },
+/* ---------------------------------------------------------------------
+   بيانات الموديولات الثابتة (مستخرجة من شجرة السنة الثانية TSMFM)
+--------------------------------------------------------------------- */
+const MODULES_SEED = [
+  { id: "EGTS202", name: "Français", group: "اللغات والتواصل", hours: 115, coef: 2, color: "violet" },
+  { id: "EGTS203", name: "Anglais technique", group: "اللغات والتواصل", hours: 50, coef: 2, color: "violet" },
+  { id: "EGTS204", name: "Culture entrepreneuriale", group: "الثقافة والتنمية الذاتية", hours: 45, coef: 2, color: "emerald" },
+  { id: "EGTS205", name: "Compétences comportementales", group: "الثقافة والتنمية الذاتية", hours: 30, coef: 2, color: "emerald" },
+  { id: "EGTSI206", name: "Culture et techniques intermédiaires du numérique", group: "الثقافة والتنمية الذاتية", hours: 30, coef: 1, color: "emerald" },
+  { id: "M205", name: "Gestion de la production", group: "التسيير والتنظيم الصناعي", hours: 30, coef: 2, color: "orange" },
+  { id: "M207", name: "Calcul du prix de revient et devis", group: "التسيير والتنظيم الصناعي", hours: 30, coef: 2, color: "orange" },
+  { id: "M208", name: "Optimisation et amélioration de la production", group: "التسيير والتنظيم الصناعي", hours: 42, coef: 2, color: "orange" },
+  { id: "M210", name: "Conduite et gestion de projets d'industrialisation", group: "التسيير والتنظيم الصناعي", hours: 40, coef: 2, color: "orange" },
+  { id: "M212", name: "Démarche qualité", group: "التسيير والتنظيم الصناعي", hours: 15, coef: 1, color: "orange" },
+  { id: "M201", name: "Analyse de produits et gamme de montage", group: "التحليل والمناهج", hours: 45, coef: 2, color: "rose" },
+  { id: "M202", name: "Détermination des temps de fabrication", group: "التحليل والمناهج", hours: 30, coef: 2, color: "rose" },
+  { id: "M204", name: "Statistiques en production", group: "التحليل والمناهج", hours: 30, coef: 2, color: "rose" },
+  { id: "M206", name: "Conception et Dessin d'outillages de production", group: "التصميم والتجهيزات", hours: 88, coef: 4, color: "sky" },
+  { id: "M203", name: "Élaboration et Constitution des dossiers de fabrication", group: "الإنتاج (قلب المهنة)", hours: 90, coef: 4, color: "amber" },
+  { id: "M209", name: "Programmation, réglage et conduite des MOCN", group: "الإنتاج (قلب المهنة)", hours: 90, coef: 4, color: "amber" },
+  { id: "M211", name: "CAO / FAO", group: "الإنتاج (قلب المهنة)", hours: 70, coef: 3, color: "amber" },
 ];
-const catOf = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[0];
+const STAGE = { id: "M213", name: "Intégration en milieu de travail", weeks: 4 };
 
-const RAW_MODULES = [
-  { id: 'EGTS202', name: 'Français', hours: 115, coef: 2, cat: 'langues' },
-  { id: 'EGTS203', name: 'Anglais technique', hours: 50, coef: 2, cat: 'langues' },
-  { id: 'EGTS204', name: 'Culture entrepreneuriale', hours: 45, coef: 2, cat: 'culture' },
-  { id: 'EGTS205', name: 'Compétences comportementales', hours: 30, coef: 2, cat: 'culture' },
-  { id: 'EGTSI206', name: 'Culture et techniques intermédiaires du numérique', hours: 30, coef: 1, cat: 'culture' },
-  { id: 'M205', name: 'Gestion de la production', hours: 30, coef: 2, cat: 'gestion' },
-  { id: 'M207', name: 'Calcul du prix de revient industriel et devis', hours: 30, coef: 2, cat: 'gestion' },
-  { id: 'M208', name: 'Optimisation et amélioration de la production', hours: 42, coef: 2, cat: 'gestion' },
-  { id: 'M210', name: "Conduite et gestion de projets d'industrialisation", hours: 40, coef: 2, cat: 'gestion' },
-  { id: 'M212', name: 'Démarche qualité', hours: 15, coef: 1, cat: 'gestion' },
-  { id: 'M201', name: 'Analyse de produits et gamme de montage', hours: 45, coef: 2, cat: 'analyse' },
-  { id: 'M202', name: 'Détermination des temps de fabrication', hours: 30, coef: 2, cat: 'analyse' },
-  { id: 'M204', name: 'Statistiques en production', hours: 30, coef: 2, cat: 'analyse' },
-  { id: 'M206', name: "Conception et dessin d'outillages de production", hours: 88, coef: 4, cat: 'conception' },
-  { id: 'M203', name: 'Élaboration et constitution des dossiers de fabrication', hours: 90, coef: 4, cat: 'fabrication' },
-  { id: 'M209', name: 'Programmation, réglage et conduite des MOCN', hours: 90, coef: 4, cat: 'fabrication' },
-  { id: 'M211', name: 'CAO / FAO', hours: 70, coef: 3, cat: 'fabrication' },
-].map((m) => ({ ...m, grades: { controle: '', tp: '', efm: '', regional: '' } }));
+const COLOR_MAP = {
+  violet: { ring: "ring-violet-500/40", text: "text-violet-300", bg: "bg-violet-500/10", bar: "bg-violet-400", dot: "bg-violet-400" },
+  emerald: { ring: "ring-emerald-500/40", text: "text-emerald-300", bg: "bg-emerald-500/10", bar: "bg-emerald-400", dot: "bg-emerald-400" },
+  orange: { ring: "ring-orange-500/40", text: "text-orange-300", bg: "bg-orange-500/10", bar: "bg-orange-400", dot: "bg-orange-400" },
+  rose: { ring: "ring-rose-500/40", text: "text-rose-300", bg: "bg-rose-500/10", bar: "bg-rose-400", dot: "bg-rose-400" },
+  sky: { ring: "ring-sky-500/40", text: "text-sky-300", bg: "bg-sky-500/10", bar: "bg-sky-400", dot: "bg-sky-400" },
+  amber: { ring: "ring-amber-500/40", text: "text-amber-300", bg: "bg-amber-500/10", bar: "bg-amber-400", dot: "bg-amber-400" },
+};
 
-const STAGE = { id: 'M213', name: 'Intégration en milieu de travail', weeks: 4 };
+const uid = () => Math.random().toString(36).slice(2, 10);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const daysUntil = (dateStr) => {
+  if (!dateStr) return null;
+  const d = (new Date(dateStr) - new Date(todayISO())) / 86400000;
+  return Math.round(d);
+};
 
-const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'modules', label: 'Modules', icon: Boxes },
-  { id: 'grades', label: 'Grades', icon: ClipboardCheck },
-  { id: 'controle', label: 'Contrôle', icon: FileCheck2 },
-  { id: 'tp', label: 'TP', icon: Wrench },
-  { id: 'efm', label: 'EFM', icon: Award },
-  { id: 'regional', label: 'Régional', icon: Flag },
-  { id: 'attendance', label: 'Attendance', icon: CalendarCheck2 },
-  { id: 'professors', label: 'Professors', icon: UserSquare2 },
-  { id: 'students', label: 'Students', icon: Users },
-  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
-  { id: 'tasks', label: 'Tasks', icon: ListTodo },
-  { id: 'goals', label: 'Goals', icon: Target },
-  { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'notes', label: 'Notes', icon: StickyNote },
-  { id: 'statistics', label: 'Statistics', icon: BarChart3 },
-  { id: 'reports', label: 'Reports', icon: FileBarChart2 },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'ai', label: 'AI Assistant', icon: Bot },
-  { id: 'settings', label: 'Settings', icon: SettingsIcon },
-];
+const STORAGE_KEY = "tsmfm-y2-cockpit";
 
-const GTYPES = [
-  { key: 'controle', label: 'Contrôle' },
-  { key: 'tp', label: 'TP' },
-  { key: 'efm', label: 'EFM' },
-  { key: 'regional', label: 'Régional' },
-];
+const defaultState = () => ({
+  modules: Object.fromEntries(
+    MODULES_SEED.map((m) => [m.id, { mastery: 0, difficulty: 3, examDate: "", weakness: "", grades: [] }])
+  ),
+  teachers: [],
+  peers: [],
+  exams: [],
+  journal: [],
+  stageDone: false,
+  history: [],
+});
 
-const uid = () => Math.random().toString(36).slice(2, 9);
-const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
-const round1 = (n) => Math.round(n * 10) / 10;
-
-/* ============================================================
-   SMALL UI PRIMITIVES
-   ============================================================ */
-function GlassCard({ className = '', children, style, ...rest }) {
-  return (
-    <div
-      className={`relative rounded-3xl glass glass-hover ${className}`}
-      style={style}
-      {...rest}
-    >
-      {children}
-    </div>
-  );
-}
-
-function SectionTitle({ eyebrow, title, action }) {
-  return (
-    <div className="flex items-end justify-between mb-4">
-      <div>
-        {eyebrow && (
-          <div className="text-xs uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--ink-2)' }}>
-            {eyebrow}
-          </div>
-        )}
-        <h2 className="font-display text-xl font-semibold" style={{ color: 'var(--ink-0)' }}>
-          {title}
-        </h2>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function ProgressBar({ value, color = 'var(--accent)', track }) {
-  return (
-    <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: track || 'var(--line)' }}>
-      <div
-        className="h-full rounded-full transition-all duration-700 ease-out"
-        style={{ width: `${clamp(value, 0, 100)}%`, background: color }}
-      />
-    </div>
-  );
-}
-
-function StatCard({ label, value, sub, icon: Icon, color = 'var(--accent)', delay = 0 }) {
-  return (
-    <GlassCard className="p-4 anim-in" style={{ animationDelay: `${delay}ms` }}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium" style={{ color: 'var(--ink-2)' }}>{label}</span>
-        {Icon && (
-          <span
-            className="w-7 h-7 rounded-xl flex items-center justify-center"
-            style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}
-          >
-            <Icon size={14} />
-          </span>
-        )}
-      </div>
-      <div className="font-display text-2xl font-bold" style={{ color: 'var(--ink-0)' }}>{value}</div>
-      {sub && <div className="text-xs mt-1" style={{ color: 'var(--ink-2)' }}>{sub}</div>}
-    </GlassCard>
-  );
-}
-
-function Donut({ value, max = 20, color = 'var(--accent)', size = 116, label, sub }) {
-  const pct = value == null ? 0 : clamp((value / max) * 100, 0, 100);
-  const r = (size - 14) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="flex flex-col items-center justify-center">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth="10" />
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="10"
-          strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c - (c * pct) / 100}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(.2,.8,.2,1)' }}
-        />
-        <text x="50%" y="47%" textAnchor="middle" fontSize="20" fontWeight="700" fill="var(--ink-0)" className="font-display">
-          {value == null ? '—' : round1(value)}
-        </text>
-        <text x="50%" y="63%" textAnchor="middle" fontSize="9" fill="var(--ink-2)">/ {max}</text>
-      </svg>
-      {label && <div className="text-sm font-medium mt-1" style={{ color: 'var(--ink-0)' }}>{label}</div>}
-      {sub && <div className="text-xs" style={{ color: 'var(--ink-2)' }}>{sub}</div>}
-    </div>
-  );
-}
-
-function MiniBars({ data, max = 20 }) {
-  return (
-    <div className="space-y-3">
-      {data.map((d) => (
-        <div key={d.label}>
-          <div className="flex justify-between text-xs mb-1">
-            <span style={{ color: 'var(--ink-1)' }}>{d.label}</span>
-            <span className="font-mono" style={{ color: 'var(--ink-0)' }}>{d.value == null ? '—' : round1(d.value)}</span>
-          </div>
-          <ProgressBar value={d.value == null ? 0 : (d.value / max) * 100} color={d.color} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Radar({ data, max = 20, size = 260 }) {
-  const n = data.length;
-  const cx = size / 2, cy = size / 2, r = size / 2 - 34;
-  const pt = (i, val) => {
-    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-    const rad = (clamp(val, 0, max) / max) * r;
-    return [cx + rad * Math.cos(angle), cy + rad * Math.sin(angle)];
+/* ---------------------------------------------------------------------
+   عداد نصف دائري (Gauge) بأسلوب شاشة تحكم آلة CNC
+--------------------------------------------------------------------- */
+function Gauge20({ value, size = 168 }) {
+  const pct = Math.max(0, Math.min(1, value / 20));
+  const r = size / 2 - 14;
+  const cx = size / 2;
+  const cy = size / 2;
+  const startAngle = 180;
+  const endAngle = 360;
+  const angle = startAngle + pct * (endAngle - startAngle);
+  const toXY = (a) => {
+    const rad = (a * Math.PI) / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
   };
-  const ringPts = (frac) =>
-    Array.from({ length: n }, (_, i) => {
-      const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-      return `${cx + r * frac * Math.cos(angle)},${cy + r * frac * Math.sin(angle)}`;
-    }).join(' ');
-  const dataPts = data.map((d, i) => pt(i, d.value || 0)).map(([x, y]) => `${x},${y}`).join(' ');
+  const [sx, sy] = toXY(startAngle);
+  const [ex, ey] = toXY(endAngle);
+  const [vx, vy] = toXY(angle);
+  const arcPath = (x1, y1, x2, y2, large) =>
+    `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  const color = value >= 12 ? "#34d399" : value >= 10 ? "#fbbf24" : "#fb7185";
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {[0.25, 0.5, 0.75, 1].map((f) => (
-        <polygon key={f} points={ringPts(f)} fill="none" stroke="var(--line)" strokeWidth="1" />
-      ))}
-      {data.map((d, i) => {
-        const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-        const [lx, ly] = [cx + (r + 22) * Math.cos(angle), cy + (r + 22) * Math.sin(angle)];
-        return (
-          <text key={d.label} x={lx} y={ly} fontSize="9.5" fill="var(--ink-2)" textAnchor="middle" dominantBaseline="middle">
-            {d.short || d.label}
-          </text>
-        );
-      })}
-      <polygon points={dataPts} fill="var(--accent)" fillOpacity="0.22" stroke="var(--accent)" strokeWidth="2"
-        style={{ transition: 'all 0.8s cubic-bezier(.2,.8,.2,1)' }} />
-      {data.map((d, i) => {
-        const [x, y] = pt(i, d.value || 0);
-        return <circle key={d.label} cx={x} cy={y} r="3.5" fill={d.color || 'var(--accent)'} />;
-      })}
+    <svg width={size} height={size / 1.6} viewBox={`0 0 ${size} ${size / 1.6}`}>
+      <path d={arcPath(sx, sy, ex, ey, 1)} fill="none" stroke="#1e293b" strokeWidth="10" strokeLinecap="round" />
+      <path d={arcPath(sx, sy, vx, vy, pct > 0.5 ? 1 : 0)} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" />
+      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="30" fontWeight="700" fill="#f1f5f9" fontFamily="ui-monospace, monospace">
+        {value.toFixed(2)}
+      </text>
+      <text x={cx} y={cy + 16} textAnchor="middle" fontSize="11" fill="#94a3b8" fontFamily="ui-monospace, monospace">
+        المعدل / 20
+      </text>
     </svg>
   );
 }
 
-function Sparkline({ points, width = 560, height = 160, color = 'var(--accent)' }) {
-  if (points.length < 2) {
-    return (
-      <div className="flex items-center justify-center h-[160px] text-sm" style={{ color: 'var(--ink-2)' }}>
-        أضف بعض النقاط لعرض تطور المعدل هنا
-      </div>
-    );
-  }
-  const max = 20, min = 0;
-  const step = width / (points.length - 1);
-  const y = (v) => height - ((v - min) / (max - min)) * (height - 20) - 10;
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * step} ${y(p)}`).join(' ');
-  const area = `${path} L ${width} ${height} L 0 ${height} Z`;
+function LED({ active, color = "amber" }) {
+  const c = { amber: "bg-amber-400 shadow-amber-400/70", emerald: "bg-emerald-400 shadow-emerald-400/70" }[color];
   return (
-    <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill="url(#sparkFill)" />
-      <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {points.map((p, i) => (
-        <circle key={i} cx={i * step} cy={y(p)} r="2.5" fill={color} />
-      ))}
-    </svg>
-  );
-}
-
-function NumField({ value, onChange, placeholder = '—' }) {
-  return (
-    <input
-      type="number" min="0" max="20" step="0.25" value={value} placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-16 text-center rounded-lg py-1.5 text-sm font-mono bg-transparent focus-ring"
-      style={{ border: '1px solid var(--glass-border)', color: 'var(--ink-0)' }}
+    <span
+      className={`inline-block w-1.5 h-1.5 rounded-full ${active ? c + " shadow-[0_0_6px]" : "bg-slate-700"}`}
     />
   );
 }
 
-/* ============================================================
-   APP
-   ============================================================ */
+/* ---------------------------------------------------------------------
+   التطبيق الرئيسي
+--------------------------------------------------------------------- */
 export default function App() {
-  const [theme, setTheme] = useState('dark');
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [state, setState] = useState(defaultState());
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState("overview");
+  const saveTimer = useRef(null);
 
-  const [modules, setModules] = useState(RAW_MODULES);
-  const [weights, setWeights] = useState({ controle: 25, tp: 25, efm: 25, regional: 25 });
-
-  const [studyHours, setStudyHours] = useState(18);
-  const [weeklyGoalHours, setWeeklyGoalHours] = useState(20);
-
-  const [sessions, setSessions] = useState({ total: 24, attended: 21 });
-
-  const [tasks, setTasks] = useState([
-    { id: uid(), title: 'Réviser M206 — dessin d’outillages', done: false },
-    { id: uid(), title: 'Finir compte-rendu TP CAO/FAO', done: true },
-    { id: uid(), title: 'Préparer le contrôle EGTS203', done: false },
-  ]);
-  const [taskInput, setTaskInput] = useState('');
-
-  const [goals, setGoals] = useState({
-    weekly: [
-      { id: uid(), label: '20h d’étude cette semaine', done: false },
-      { id: uid(), label: 'Terminer 3 modules Fabrication', done: false },
-    ],
-    monthly: [{ id: uid(), label: 'Moyenne générale ≥ 14/20', done: false }],
-  });
-
-  const [professors, setProfessors] = useState([
-    { id: uid(), name: 'M. El Amrani', subject: 'CAO / FAO' },
-    { id: uid(), name: 'Mme Bennis', subject: 'Anglais technique' },
-  ]);
-  const [students, setStudents] = useState([{ id: uid(), name: 'Ayoub Taoufik', group: 'TSMFM-2A' }]);
-  const [documents, setDocuments] = useState([{ id: uid(), name: 'Cours_M209_MOCN.pdf', tag: 'Fabrication' }]);
-  const [notes, setNotes] = useState([{ id: uid(), title: 'Formule prix de revient', body: 'Coût direct + coût indirect + marge…' }]);
-  const [examDate, setExamDate] = useState('2026-06-15');
-  const [activity, setActivity] = useState([{ id: uid(), text: 'Système initialisé — bienvenue Ayoub 👋', time: Date.now() }]);
-  const [history, setHistory] = useState([]);
-  const lastOverall = useRef(null);
-
+  // تحميل البيانات المحفوظة
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY);
+        if (res && res.value) {
+          const parsed = JSON.parse(res.value);
+          const merged = defaultState();
+          merged.modules = { ...merged.modules, ...(parsed.modules || {}) };
+          merged.teachers = parsed.teachers || [];
+          merged.peers = parsed.peers || [];
+          merged.exams = parsed.exams || [];
+          merged.journal = parsed.journal || [];
+          merged.stageDone = !!parsed.stageDone;
+          merged.history = parsed.history || [];
+          setState(merged);
+        }
+      } catch (e) {
+        /* لا توجد بيانات محفوظة بعد */
+      } finally {
+        setLoaded(true);
+      }
+    })();
+  }, []);
 
-  const logActivity = (text) =>
-    setActivity((a) => [{ id: uid(), text, time: Date.now() }, ...a].slice(0, 30));
+  // حفظ تلقائي (مع تأخير بسيط)
+  useEffect(() => {
+    if (!loaded) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await window.storage.set(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error("save failed", e);
+      }
+    }, 500);
+    return () => clearTimeout(saveTimer.current);
+  }, [state, loaded]);
 
-  /* ---------- reactive engine ---------- */
-  const moduleFinal = (m) => {
-    const entries = GTYPES.map((g) => [g.key, m.grades[g.key]]).filter(([, v]) => v !== '' && v != null);
-    if (entries.length === 0) return null;
-    const totalW = entries.reduce((s, [k]) => s + weights[k], 0) || 1;
-    const sum = entries.reduce((s, [k, v]) => s + Number(v) * weights[k], 0);
-    return sum / totalW;
+  // نسخة احتياطية: تصدير JSON
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tsmfm-backup-${todayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
-  const enriched = useMemo(() => modules.map((m) => ({ ...m, final: moduleFinal(m) })), [modules, weights]);
-
-  const overall = useMemo(() => {
-    const withFinal = enriched.filter((m) => m.final != null);
-    if (!withFinal.length) return null;
-    const totalCoef = withFinal.reduce((s, m) => s + m.coef, 0);
-    return withFinal.reduce((s, m) => s + m.final * m.coef, 0) / totalCoef;
-  }, [enriched]);
-
-  const typeAvg = (key) => {
-    const vals = modules.map((m) => m.grades[key]).filter((v) => v !== '' && v != null).map(Number);
-    if (!vals.length) return null;
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  // نسخة احتياطية: استرجاع JSON
+  const importInputRef = useRef(null);
+  const importData = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        const merged = defaultState();
+        merged.modules = { ...merged.modules, ...(parsed.modules || {}) };
+        merged.teachers = parsed.teachers || [];
+        merged.peers = parsed.peers || [];
+        merged.exams = parsed.exams || [];
+        merged.journal = parsed.journal || [];
+        merged.stageDone = !!parsed.stageDone;
+        merged.history = parsed.history || [];
+        setState(merged);
+      } catch (err) {
+        alert("الملف غير صالح، تأكد أنو JSON صادر من هاد الداشبورد.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
-  const controleAvg = useMemo(() => typeAvg('controle'), [modules]);
-  const tpAvg = useMemo(() => typeAvg('tp'), [modules]);
-  const efmAvg = useMemo(() => typeAvg('efm'), [modules]);
-  const regionalAvg = useMemo(() => typeAvg('regional'), [modules]);
 
-  const categoryStats = useMemo(
-    () =>
-      CATEGORIES.map((c) => {
-        const mods = enriched.filter((m) => m.cat === c.id && m.final != null);
-        const totalCoef = mods.reduce((s, m) => s + m.coef, 0);
-        const value = totalCoef ? mods.reduce((s, m) => s + m.final * m.coef, 0) / totalCoef : 0;
-        return { ...c, value, short: c.label.split(' ')[0], hasData: mods.length > 0 };
-      }),
-    [enriched]
-  );
+  const [dismissedAlert, setDismissedAlert] = useState(false);
 
-  const finishedCount = enriched.filter((m) => m.final != null).length;
-  const remainingCount = enriched.length - finishedCount;
-  const successRate = finishedCount ? (enriched.filter((m) => m.final >= 10).length / finishedCount) * 100 : null;
-  const completion = useMemo(() => {
-    const total = modules.length * GTYPES.length;
-    const filled = modules.reduce((s, m) => s + GTYPES.filter((g) => m.grades[g.key] !== '').length, 0);
-    return (filled / total) * 100;
-  }, [modules]);
+  const updateModule = useCallback((id, patch) => {
+    setState((s) => ({ ...s, modules: { ...s.modules, [id]: { ...s.modules[id], ...patch } } }));
+  }, []);
 
-  const attendanceRate = sessions.total ? (sessions.attended / sessions.total) * 100 : 0;
-  const xp = studyHours * 12;
-  const level = Math.floor(xp / 500) + 1;
-  const xpInLevel = ((xp % 500) / 500) * 100;
-  const overallPct = overall != null ? (overall / 20) * 100 : 0;
-  const performanceScore = Math.round(overallPct * 0.5 + attendanceRate * 0.3 + completion * 0.2);
-  const studyRatio = clamp((studyHours / (weeklyGoalHours || 1)) * 100, 0, 100);
-  const tasksDoneRatio = tasks.length ? (tasks.filter((t) => t.done).length / tasks.length) * 100 : 0;
-  const productivityScore = Math.round(tasksDoneRatio * 0.5 + studyRatio * 0.5);
-  const studyScore = Math.round(completion * 0.5 + studyRatio * 0.5);
+  const addGrade = (id, grade) => {
+    setState((s) => ({
+      ...s,
+      modules: {
+        ...s.modules,
+        [id]: { ...s.modules[id], grades: [...s.modules[id].grades, grade] },
+      },
+    }));
+  };
+  const removeGrade = (id, gid) => {
+    setState((s) => ({
+      ...s,
+      modules: {
+        ...s.modules,
+        [id]: { ...s.modules[id], grades: s.modules[id].grades.filter((g) => g.id !== gid) },
+      },
+    }));
+  };
 
-  const daysToExam = useMemo(() => {
-    const diff = new Date(examDate).getTime() - Date.now();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }, [examDate]);
+  /* ---------- حسابات المعدل والأولويات ---------- */
+  const moduleAvg = (id) => {
+    const grades = state.modules[id]?.grades || [];
+    if (!grades.length) return null;
+    const sum = grades.reduce((a, g) => a + Number(g.value), 0);
+    return sum / grades.length;
+  };
 
-  useEffect(() => {
-    if (overall != null && overall !== lastOverall.current) {
-      lastOverall.current = overall;
-      setHistory((h) => [...h, overall].slice(-16));
+  const overallAvg = (() => {
+    let wsum = 0, csum = 0;
+    MODULES_SEED.forEach((m) => {
+      const avg = moduleAvg(m.id);
+      if (avg !== null) {
+        wsum += avg * m.coef;
+        csum += m.coef;
+      }
+    });
+    return csum ? wsum / csum : 0;
+  })();
+
+  const priorityScore = (m) => {
+    const md = state.modules[m.id];
+    const mastery = md?.mastery ?? 0;
+    const diff = md?.difficulty ?? 3;
+    const du = daysUntil(md?.examDate);
+    let urgency = 0;
+    if (du !== null) {
+      if (du <= 3) urgency = 6;
+      else if (du <= 7) urgency = 4;
+      else if (du <= 14) urgency = 2;
     }
-  }, [overall]);
-
-  /* ---------- mutators ---------- */
-  const updateGrade = (id, key, value) => {
-    setModules((prev) => prev.map((m) => (m.id === id ? { ...m, grades: { ...m.grades, [key]: value } } : m)));
-    if (value !== '') logActivity(`${id} — note ${GTYPES.find((g) => g.key === key).label} mise à jour → ${value}/20`);
+    return m.coef * 2 + ((100 - mastery) / 100) * 5 + diff + urgency;
   };
 
-  const addTask = () => {
-    if (!taskInput.trim()) return;
-    setTasks((t) => [{ id: uid(), title: taskInput.trim(), done: false }, ...t]);
-    logActivity(`Nouvelle tâche : ${taskInput.trim()}`);
-    setTaskInput('');
-  };
-  const toggleTask = (id) =>
-    setTasks((t) => t.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
-  const removeTask = (id) => setTasks((t) => t.filter((x) => x.id !== id));
-
-  const toggleGoal = (scope, id) =>
-    setGoals((g) => ({ ...g, [scope]: g[scope].map((x) => (x.id === id ? { ...x, done: !x.done } : x)) }));
-
-  const addSimple = (setter, item, label) => {
-    setter((list) => [{ id: uid(), ...item }, ...list]);
-    logActivity(label);
-  };
-  const removeFrom = (setter, id) => setter((list) => list.filter((x) => x.id !== id));
-
-  /* ============================================================
-     RENDER
-     ============================================================ */
-  return (
-    <div className="min-h-screen relative" style={{ background: 'var(--bg-0)', color: 'var(--ink-0)' }}>
-      <div className="ambient-bg">
-        <div className="ambient-blob blob-a" />
-        <div className="ambient-blob blob-b" />
-        <div className="ambient-blob blob-c" />
-      </div>
-
-      <div className="relative z-10 flex min-h-screen">
-        {/* SIDEBAR */}
-        <aside
-          className={`fixed lg:static z-40 h-screen lg:h-auto w-72 shrink-0 transition-transform duration-300 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          }`}
-        >
-          <div className="h-full lg:h-screen lg:sticky lg:top-0 p-4 flex flex-col">
-            <GlassCard className="glass-strong p-4 flex-1 flex flex-col overflow-hidden">
-              <div className="flex items-center gap-2 px-2 pb-4">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
-                >
-                  <GraduationCap size={18} color="#0a0e17" />
-                </div>
-                <div>
-                  <div className="font-display font-bold text-sm leading-none">Study OS</div>
-                  <div className="text-[10px] mt-1" style={{ color: 'var(--ink-2)' }}>TSMFM · 2ème année</div>
-                </div>
-                <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)} style={{ color: 'var(--ink-2)' }}>
-                  <X size={18} />
-                </button>
-              </div>
-
-              <nav className="flex-1 overflow-y-auto pr-1 space-y-1">
-                {NAV.map((item) => {
-                  const Icon = item.icon;
-                  const active = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        setSidebarOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 press-scale"
-                      style={{
-                        background: active ? 'var(--glass-fill-strong)' : 'transparent',
-                        color: active ? 'var(--ink-0)' : 'var(--ink-2)',
-                        border: active ? '1px solid var(--glass-border)' : '1px solid transparent',
-                        fontWeight: active ? 600 : 500,
-                      }}
-                    >
-                      <Icon size={16} />
-                      <span className="truncate">{item.label}</span>
-                      {active && <ChevronRight size={14} className="ml-auto" />}
-                    </button>
-                  );
-                })}
-              </nav>
-
-              <div className="pt-3 branch-rule mt-2" />
-              <button
-                onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-                className="mt-3 w-full flex items-center gap-2 justify-center py-2.5 rounded-xl text-sm font-medium press-scale glass"
-              >
-                {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-                {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-              </button>
-            </GlassCard>
-          </div>
-        </aside>
-
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-        )}
-
-        {/* MAIN */}
-        <main className="flex-1 min-w-0 p-4 lg:p-8 space-y-6">
-          {/* Topbar */}
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden glass rounded-xl p-2" onClick={() => setSidebarOpen(true)}>
-              <Menu size={18} />
-            </button>
-            <div className="relative flex-1 max-w-md">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ink-2)' }} />
-              <input
-                placeholder="Rechercher un module, une note…"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm bg-transparent glass focus-ring"
-                style={{ color: 'var(--ink-0)' }}
-              />
-            </div>
-            <div className="ml-auto flex items-center gap-2 text-xs" style={{ color: 'var(--ink-2)' }}>
-              <Clock size={14} /> Examen dans <span className="font-mono font-semibold" style={{ color: 'var(--ink-0)' }}>{daysToExam}j</span>
-            </div>
-          </div>
-
-          {/* PROFILE CARD */}
-          <GlassCard className="glass-strong p-6 anim-in">
-            <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <div className="relative shrink-0 mx-auto md:mx-0">
-                <div
-                  className="w-24 h-24 rounded-3xl flex items-center justify-center font-display text-3xl font-bold shadow-lg"
-                  style={{ background: 'linear-gradient(135deg, var(--cat-conception), var(--cat-langues))', color: '#0a0e17' }}
-                >
-                  AT
-                </div>
-                <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
-                  style={{ background: 'var(--good)', color: '#06251b' }}>
-                  {level}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-display text-2xl font-bold">Ayoub Taoufik</h1>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: 'var(--glass-fill-strong)', color: 'var(--accent)' }}>
-                    TSMFM · 2ème année
-                  </span>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--ink-2)' }}>
-                  Niveau {level} · {xp} XP · {finishedCount}/{enriched.length} modules avec note
-                </p>
-                <div className="mt-3 max-w-md">
-                  <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--ink-2)' }}>
-                    <span>Progression du niveau</span><span>{Math.round(xpInLevel)}%</span>
-                  </div>
-                  <ProgressBar value={xpInLevel} color="var(--accent)" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 md:gap-4 shrink-0">
-                {[
-                  ['Moyenne', overall != null ? round1(overall) : '—'],
-                  ['Réussite', successRate != null ? `${Math.round(successRate)}%` : '—'],
-                  ['Dernière activité', activity[0] ? 'à l’instant' : '—'],
-                ].map(([label, val]) => (
-                  <div key={label} className="text-center px-3 py-2 rounded-2xl glass">
-                    <div className="font-display font-bold text-lg">{val}</div>
-                    <div className="text-[10px] mt-0.5" style={{ color: 'var(--ink-2)' }}>{label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </GlassCard>
-
-          {/* TAB CONTENT */}
-          {activeTab === 'dashboard' && (
-            <DashboardView {...{ overall, controleAvg, tpAvg, efmAvg, regionalAvg, successRate, finishedCount,
-              remainingCount, studyHours, setStudyHours, performanceScore, productivityScore, studyScore,
-              categoryStats, history, goals, toggleGoal, activity, daysToExam, examDate }} />
-          )}
-
-          {activeTab === 'modules' && <ModulesView enriched={enriched} />}
-
-          {(activeTab === 'grades' || GTYPES.some((g) => g.key === activeTab)) && (
-            <GradesView
-              modules={enriched}
-              weights={weights}
-              setWeights={setWeights}
-              updateGrade={updateGrade}
-              only={GTYPES.some((g) => g.key === activeTab) ? activeTab : null}
-            />
-          )}
-
-          {activeTab === 'attendance' && (
-            <AttendanceView sessions={sessions} setSessions={setSessions} attendanceRate={attendanceRate} logActivity={logActivity} />
-          )}
-
-          {activeTab === 'professors' && (
-            <PeopleView
-              title="Professors" icon={UserSquare2}
-              items={professors} fieldB="subject" placeholderA="Nom du professeur" placeholderB="Matière"
-              onAdd={(a, b) => addSimple(setProfessors, { name: a, subject: b }, `Professeur ajouté : ${a}`)}
-              onRemove={(id) => removeFrom(setProfessors, id)}
-            />
-          )}
-          {activeTab === 'students' && (
-            <PeopleView
-              title="Students" icon={Users}
-              items={students} fieldB="group" placeholderA="Nom de l’étudiant" placeholderB="Groupe"
-              onAdd={(a, b) => addSimple(setStudents, { name: a, group: b }, `Étudiant ajouté : ${a}`)}
-              onRemove={(id) => removeFrom(setStudents, id)}
-            />
-          )}
-
-          {activeTab === 'calendar' && <CalendarView examDate={examDate} setExamDate={setExamDate} goals={goals} daysToExam={daysToExam} />}
-
-          {activeTab === 'tasks' && (
-            <TasksView tasks={tasks} taskInput={taskInput} setTaskInput={setTaskInput} addTask={addTask} toggleTask={toggleTask} removeTask={removeTask} />
-          )}
-
-          {activeTab === 'goals' && <GoalsView goals={goals} toggleGoal={toggleGoal} />}
-
-          {activeTab === 'documents' && (
-            <ListManager
-              title="Documents" icon={FileText}
-              items={documents} fieldB="tag" placeholderA="Nom du fichier" placeholderB="Catégorie"
-              onAdd={(a, b) => addSimple(setDocuments, { name: a, tag: b }, `Document ajouté : ${a}`)}
-              onRemove={(id) => removeFrom(setDocuments, id)}
-            />
-          )}
-          {activeTab === 'notes' && <NotesView notes={notes} setNotes={setNotes} logActivity={logActivity} />}
-
-          {activeTab === 'statistics' && <StatisticsView categoryStats={categoryStats} history={history} enriched={enriched} />}
-
-          {activeTab === 'reports' && (
-            <ReportsView {...{ overall, controleAvg, tpAvg, efmAvg, regionalAvg, successRate, completion, attendanceRate, performanceScore }} />
-          )}
-
-          {activeTab === 'notifications' && <NotificationsView enriched={enriched} attendanceRate={attendanceRate} activity={activity} />}
-
-          {activeTab === 'ai' && <AiCoachView {...{ overall, categoryStats, attendanceRate, completion, studyHours, weeklyGoalHours }} />}
-
-          {activeTab === 'settings' && (
-            <SettingsView weights={weights} setWeights={setWeights} weeklyGoalHours={weeklyGoalHours}
-              setWeeklyGoalHours={setWeeklyGoalHours} theme={theme} setTheme={setTheme}
-              onReset={() => { setModules(RAW_MODULES); logActivity('Notes réinitialisées'); }} />
-          )}
-        </main>
-      </div>
-    </div>
+  const rankedModules = [...MODULES_SEED].sort((a, b) => priorityScore(b) - priorityScore(a));
+  const overallMastery = Math.round(
+    MODULES_SEED.reduce((a, m) => a + (state.modules[m.id]?.mastery ?? 0), 0) / MODULES_SEED.length
   );
-}
+  const gradedCount = MODULES_SEED.filter((m) => (state.modules[m.id]?.grades || []).length > 0).length;
 
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
-function DashboardView(props) {
-  const { overall, controleAvg, tpAvg, efmAvg, regionalAvg, successRate, finishedCount, remainingCount,
-    studyHours, setStudyHours, performanceScore, productivityScore, studyScore, categoryStats, history,
-    goals, toggleGoal, activity, daysToExam } = props;
+  const upcomingExams = MODULES_SEED
+    .map((m) => ({ m, du: daysUntil(state.modules[m.id]?.examDate) }))
+    .filter((x) => x.du !== null && x.du >= 0 && x.du <= 3)
+    .sort((a, b) => a.du - b.du);
+
+  // تسجيل نقطة تقدم يومية فتاريخ التمكن العام والمعدل (كتتحدث لحظيا لليوم الحالي)
+  useEffect(() => {
+    if (!loaded) return;
+    const t = todayISO();
+    setState((s) => {
+      const last = s.history[s.history.length - 1];
+      const point = { date: t, mastery: overallMastery, avg: Number(overallAvg.toFixed(2)) };
+      if (last && last.date === t) {
+        const updated = [...s.history];
+        updated[updated.length - 1] = point;
+        return { ...s, history: updated };
+      }
+      return { ...s, history: [...s.history, point] };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overallMastery, overallAvg, loaded]);
+
+  const TABS = [
+    { id: "overview", label: "القيادة", icon: Gauge },
+    { id: "modules", label: "الموديولات", icon: Wrench },
+    { id: "teachers", label: "الأساتذة", icon: ClipboardList },
+    { id: "peers", label: "الزملاء", icon: Users },
+    { id: "exams", label: "الامتحانات", icon: Target },
+    { id: "journal", label: "دفتر الدروس", icon: NotebookPen },
+    { id: "ai", label: "المساعد الذكي", icon: MessageSquare },
+  ];
 
   return (
-    <div className="space-y-6 anim-in">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger">
-        <StatCard label="Moyenne générale" value={overall != null ? round1(overall) : '—'} sub="/ 20 · pondérée par coef" icon={TrendingUp} color="var(--accent)" />
-        <StatCard label="Taux de réussite" value={successRate != null ? `${Math.round(successRate)}%` : '—'} sub={`${finishedCount} module(s) noté(s)`} icon={CheckCircle2} color="var(--good)" />
-        <StatCard label="Modules restants" value={remainingCount} sub="sans note complète" icon={Boxes} color="var(--cat-fabrication)" />
-        <StatCard label="Examen final" value={`${daysToExam}j`} sub="jours restants" icon={Flame} color="var(--bad)" />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <GlassCard className="p-4 flex flex-col items-center"><Donut value={controleAvg} color="var(--cat-langues)" label="Contrôle" /></GlassCard>
-        <GlassCard className="p-4 flex flex-col items-center"><Donut value={tpAvg} color="var(--cat-gestion)" label="TP" /></GlassCard>
-        <GlassCard className="p-4 flex flex-col items-center"><Donut value={efmAvg} color="var(--cat-analyse)" label="EFM" /></GlassCard>
-        <GlassCard className="p-4 flex flex-col items-center"><Donut value={regionalAvg} color="var(--cat-fabrication)" label="Régional" /></GlassCard>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <GlassCard className="p-5 lg:col-span-2">
-          <SectionTitle eyebrow="Évolution" title="Tendance de la moyenne générale" />
-          <Sparkline points={history} />
-        </GlassCard>
-        <GlassCard className="p-5">
-          <SectionTitle title="Scores composites" />
-          <div className="space-y-4">
-            {[
-              ['Performance', performanceScore, 'var(--accent)'],
-              ['Productivité', productivityScore, 'var(--cat-culture)'],
-              ['Étude', studyScore, 'var(--cat-conception)'],
-            ].map(([l, v, c]) => (
-              <div key={l}>
-                <div className="flex justify-between text-xs mb-1"><span style={{ color: 'var(--ink-1)' }}>{l}</span><span className="font-mono" style={{ color: 'var(--ink-0)' }}>{v}%</span></div>
-                <ProgressBar value={v} color={c} />
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <GlassCard className="p-5 flex flex-col items-center lg:col-span-1">
-          <SectionTitle title="Radar par catégorie" />
-          <Radar data={categoryStats.map((c) => ({ ...c, short: c.label.split(' ')[0] }))} />
-        </GlassCard>
-
-        <GlassCard className="p-5 lg:col-span-1">
-          <SectionTitle title="Heures d’étude" />
-          <div className="flex items-center gap-3 mb-2">
-            <button className="glass rounded-lg px-3 py-1.5 press-scale" onClick={() => setStudyHours((h) => Math.max(0, h - 1))}>−</button>
-            <div className="font-display text-3xl font-bold flex-1 text-center">{studyHours}h</div>
-            <button className="glass rounded-lg px-3 py-1.5 press-scale" onClick={() => setStudyHours((h) => h + 1)}>+</button>
-          </div>
-          <p className="text-xs text-center" style={{ color: 'var(--ink-2)' }}>Chaque heure ajoutée augmente l’XP et le niveau instantanément.</p>
-        </GlassCard>
-
-        <GlassCard className="p-5 lg:col-span-1">
-          <SectionTitle title="Objectifs de la semaine" />
-          <div className="space-y-2">
-            {goals.weekly.map((g) => (
-              <button key={g.id} onClick={() => toggleGoal('weekly', g.id)} className="w-full flex items-center gap-2 text-sm text-left press-scale">
-                {g.done ? <CheckCircle2 size={16} color="var(--good)" /> : <Circle size={16} style={{ color: 'var(--ink-2)' }} />}
-                <span style={{ color: g.done ? 'var(--ink-2)' : 'var(--ink-0)', textDecoration: g.done ? 'line-through' : 'none' }}>{g.label}</span>
-              </button>
-            ))}
-          </div>
-        </GlassCard>
-      </div>
-
-      <GlassCard className="p-5">
-        <SectionTitle eyebrow="Journal" title="Dernières activités" />
-        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-          {activity.slice(0, 8).map((a) => (
-            <div key={a.id} className="flex items-center gap-3 text-sm py-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
-              <span className="w-1.5 h-1.5 rounded-full pulse-dot shrink-0" style={{ background: 'var(--accent)' }} />
-              <span style={{ color: 'var(--ink-1)' }}>{a.text}</span>
-              <span className="ml-auto text-xs shrink-0" style={{ color: 'var(--ink-2)' }}>
-                {new Date(a.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-              </span>
+    <div dir="rtl" className="min-h-screen bg-slate-950 text-slate-100" style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif" }}>
+      {/* شريط علوي بأسلوب لوحة تحكم آلة */}
+      <div className="border-b border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950">
+        <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 self-start md:self-center">
+            <div className="w-11 h-11 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/40 flex items-center justify-center">
+              <Gauge className="w-6 h-6 text-amber-400" />
             </div>
-          ))}
+            <div>
+              <div className="flex items-center gap-2 text-xs text-slate-500 font-mono tracking-widest">
+                TSMFM · السنة الثانية <LED active />
+              </div>
+              <h1 className="text-xl font-bold text-slate-100">لوحة قيادة الدراسة</h1>
+            </div>
+            <div className="flex items-center gap-1.5 mr-2">
+              <button onClick={exportData} title="تحميل نسخة احتياطية JSON"
+                className="p-2 rounded-md bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-amber-300 hover:border-amber-500/40">
+                <Download className="w-4 h-4" />
+              </button>
+              <button onClick={() => importInputRef.current?.click()} title="استرجاع نسخة احتياطية"
+                className="p-2 rounded-md bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-amber-300 hover:border-amber-500/40">
+                <Upload className="w-4 h-4" />
+              </button>
+              <input ref={importInputRef} type="file" accept="application/json" onChange={importData} className="hidden" />
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <Gauge20 value={overallAvg} />
+            <div className="hidden sm:flex flex-col gap-1 text-sm font-mono">
+              <div className="flex items-center gap-2"><span className="text-slate-500">التمكن العام</span><span className="text-amber-300">{overallMastery}%</span></div>
+              <div className="flex items-center gap-2"><span className="text-slate-500">موديولات مقيّمة</span><span className="text-sky-300">{gradedCount}/18</span></div>
+              <div className="flex items-center gap-2"><span className="text-slate-500">التدريب</span>
+                <span className={state.stageDone ? "text-emerald-300" : "text-slate-500"}>{state.stageDone ? "منجز ✓" : "لم يُنجز بعد"}</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </GlassCard>
-    </div>
-  );
-}
+        {/* تبويبات */}
+        <div className="max-w-6xl mx-auto px-4 overflow-x-auto">
+          <div className="flex gap-1 pb-2">
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const active = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-sm whitespace-nowrap border transition-colors ${
+                    active
+                      ? "bg-slate-800 border-amber-500/40 text-amber-300"
+                      : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <LED active={active} />
+                  <Icon className="w-4 h-4" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
-/* ============================================================
-   MODULES
-   ============================================================ */
-function ModulesView({ enriched }) {
-  return (
-    <div className="space-y-6 anim-in">
-      {CATEGORIES.map((cat) => {
-        const mods = enriched.filter((m) => m.cat === cat.id);
-        return (
-          <GlassCard key={cat.id} className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: cat.color }} />
-              <h3 className="font-display font-semibold">{cat.label}</h3>
-              <span className="text-xs ml-auto" style={{ color: 'var(--ink-2)' }}>{mods.length} module(s)</span>
-            </div>
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {mods.map((m) => (
-                <div key={m.id} className="rounded-2xl p-4 glass-hover" style={{ border: '1px solid var(--glass-border)' }}>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md" style={{ background: 'var(--glass-fill-strong)', color: 'var(--ink-2)' }}>{m.id}</span>
-                    <span className="text-xs font-semibold" style={{ color: cat.color }}>Coef {m.coef}</span>
-                  </div>
-                  <div className="text-sm font-medium mb-2 leading-snug">{m.name}</div>
-                  <div className="flex justify-between items-center text-xs" style={{ color: 'var(--ink-2)' }}>
-                    <span>{m.hours}h</span>
-                    <span className="font-mono font-semibold" style={{ color: m.final != null ? 'var(--ink-0)' : 'var(--ink-2)' }}>
-                      {m.final != null ? `${round1(m.final)}/20` : 'sans note'}
-                    </span>
-                  </div>
-                  <div className="mt-2"><ProgressBar value={m.final != null ? (m.final / 20) * 100 : 0} color={cat.color} /></div>
-                </div>
+      {!!upcomingExams.length && !dismissedAlert && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="flex items-start gap-3 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3.5">
+            <BellRing className="w-5 h-5 text-rose-300 shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm text-rose-100">
+              <span className="font-semibold">تنبيه: </span>
+              {upcomingExams.map((x, i) => (
+                <span key={x.m.id}>
+                  {x.m.id} ({x.du === 0 ? "اليوم" : `بعد ${x.du}ي`}){i < upcomingExams.length - 1 ? " · " : ""}
+                </span>
               ))}
             </div>
-          </GlassCard>
-        );
-      })}
-      <GlassCard className="p-5">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--ink-2)' }} />
-          <h3 className="font-display font-semibold">Stage</h3>
-        </div>
-        <div className="mt-3 text-sm" style={{ color: 'var(--ink-1)' }}>
-          {STAGE.id} — {STAGE.name} · {STAGE.weeks} semaines
-        </div>
-      </GlassCard>
-    </div>
-  );
-}
-
-/* ============================================================
-   GRADES (shared by Grades / Contrôle / TP / EFM / Régional)
-   ============================================================ */
-function GradesView({ modules, weights, setWeights, updateGrade, only }) {
-  const cols = only ? GTYPES.filter((g) => g.key === only) : GTYPES;
-  return (
-    <div className="space-y-6 anim-in">
-      {!only && (
-        <GlassCard className="p-5">
-          <SectionTitle eyebrow="Formule" title="Pondération des notes (%)" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {GTYPES.map((g) => (
-              <div key={g.key}>
-                <div className="flex justify-between text-xs mb-1"><span style={{ color: 'var(--ink-1)' }}>{g.label}</span><span className="font-mono">{weights[g.key]}%</span></div>
-                <input type="range" min="0" max="100" value={weights[g.key]}
-                  onChange={(e) => setWeights((w) => ({ ...w, [g.key]: Number(e.target.value) }))}
-                  className="w-full accent-[var(--accent)]" />
-              </div>
-            ))}
+            <button onClick={() => setDismissedAlert(true)} className="text-rose-300/70 hover:text-rose-200">
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <p className="text-xs mt-3" style={{ color: 'var(--ink-2)' }}>
-            La moyenne de chaque module se recalcule automatiquement selon ces poids, en ne comptant que les notes déjà saisies.
-          </p>
-        </GlassCard>
+        </div>
       )}
 
-      <GlassCard className="p-5 overflow-x-auto">
-        <SectionTitle title={only ? `Notes — ${cols[0].label}` : 'Tableau des notes'} />
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left" style={{ color: 'var(--ink-2)' }}>
-              <th className="pb-2 font-medium">Module</th>
-              {cols.map((c) => <th key={c.key} className="pb-2 font-medium text-center">{c.label}</th>)}
-              <th className="pb-2 font-medium text-center">Moyenne</th>
-            </tr>
-          </thead>
-          <tbody>
-            {modules.map((m) => (
-              <tr key={m.id} style={{ borderTop: '1px solid var(--line)' }}>
-                <td className="py-2.5 pr-3">
-                  <div className="font-medium">{m.name}</div>
-                  <div className="text-xs font-mono" style={{ color: 'var(--ink-2)' }}>{m.id}</div>
-                </td>
-                {cols.map((c) => (
-                  <td key={c.key} className="py-2.5 text-center">
-                    <NumField value={m.grades[c.key]} onChange={(v) => updateGrade(m.id, c.key, v)} />
-                  </td>
-                ))}
-                <td className="py-2.5 text-center font-mono font-semibold" style={{ color: catOf(m.cat).color }}>
-                  {m.final != null ? round1(m.final) : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </GlassCard>
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {tab === "overview" && (
+          <OverviewTab
+            rankedModules={rankedModules}
+            state={state}
+            moduleAvg={moduleAvg}
+            priorityScore={priorityScore}
+            stageDone={state.stageDone}
+            setStageDone={(v) => setState((s) => ({ ...s, stageDone: v }))}
+            history={state.history}
+          />
+        )}
+        {tab === "modules" && (
+          <ModulesTab
+            state={state}
+            updateModule={updateModule}
+            addGrade={addGrade}
+            removeGrade={removeGrade}
+            moduleAvg={moduleAvg}
+          />
+        )}
+        {tab === "teachers" && <TeachersTab state={state} setState={setState} />}
+        {tab === "peers" && <PeersTab state={state} setState={setState} />}
+        {tab === "exams" && <ExamsTab state={state} setState={setState} />}
+        {tab === "journal" && <JournalTab state={state} setState={setState} />}
+        {tab === "ai" && <AiTab state={state} moduleAvg={moduleAvg} />}
+      </div>
     </div>
   );
 }
 
-/* ============================================================
-   ATTENDANCE
-   ============================================================ */
-function AttendanceView({ sessions, setSessions, attendanceRate, logActivity }) {
+/* ---------------------------------------------------------------------
+   تبويب: القيادة (Overview)
+--------------------------------------------------------------------- */
+function OverviewTab({ rankedModules, state, moduleAvg, priorityScore, stageDone, setStageDone, history }) {
+  const top = rankedModules.slice(0, 3);
   return (
-    <div className="space-y-6 anim-in grid md:grid-cols-3 gap-4">
-      <GlassCard className="p-5 md:col-span-1 flex flex-col items-center justify-center">
-        <Donut value={attendanceRate} max={100} color="var(--good)" label="Assiduité" sub={`${sessions.attended}/${sessions.total} séances`} />
-      </GlassCard>
-      <GlassCard className="p-5 md:col-span-2">
-        <SectionTitle title="Mettre à jour l’assiduité" />
-        <div className="flex flex-wrap gap-3">
-          <button className="glass rounded-xl px-4 py-2 press-scale" onClick={() => { setSessions((s) => ({ ...s, total: s.total + 1, attended: s.attended + 1 })); logActivity('Séance présente ajoutée'); }}>
-            + Séance présente
-          </button>
-          <button className="glass rounded-xl px-4 py-2 press-scale" onClick={() => { setSessions((s) => ({ ...s, total: s.total + 1 })); logActivity('Séance absente ajoutée'); }}>
-            + Séance absente
-          </button>
-          <button className="glass rounded-xl px-4 py-2 press-scale" onClick={() => setSessions({ total: 0, attended: 0 })}>
-            Réinitialiser
-          </button>
+    <div className="space-y-6">
+      {history.length > 1 && <ProgressChart history={history} />}
+      <div>
+        <h2 className="text-sm font-mono text-slate-500 mb-3">🎯 أولويات اليوم — راجع هادو أولاً</h2>
+        <div className="grid md:grid-cols-3 gap-3">
+          {top.map((m, i) => {
+            const c = COLOR_MAP[m.color];
+            const md = state.modules[m.id];
+            const du = daysUntil(md.examDate);
+            return (
+              <div key={m.id} className={`rounded-xl border border-slate-800 ${c.bg} p-4 ring-1 ${c.ring}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs font-mono ${c.text}`}>{m.id} · Coef {m.coef}</span>
+                  <span className="text-xs text-slate-500 font-mono">#{i + 1}</span>
+                </div>
+                <div className="font-semibold text-slate-100 leading-snug mb-2">{m.name}</div>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>التمكن {md.mastery}%</span>
+                  {du !== null && <span className={du <= 7 ? "text-rose-300" : "text-slate-400"}>الامتحان بعد {du}ي</span>}
+                </div>
+                <div className="mt-2 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                  <div className={`h-full ${c.bar}`} style={{ width: `${md.mastery}%` }} />
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <p className="text-xs mt-4" style={{ color: 'var(--ink-2)' }}>
-          Le taux d’assiduité alimente directement le score de Performance sur le Dashboard.
-        </p>
-      </GlassCard>
-    </div>
-  );
-}
-
-/* ============================================================
-   GENERIC LIST MANAGERS (Professors / Students / Documents)
-   ============================================================ */
-function PeopleView(props) { return <ListManager {...props} />; }
-
-function ListManager({ title, icon: Icon, items, fieldB, placeholderA, placeholderB, onAdd, onRemove }) {
-  const [a, setA] = useState('');
-  const [b, setB] = useState('');
-  return (
-    <GlassCard className="p-5 anim-in">
-      <SectionTitle title={title} action={<Icon size={18} style={{ color: 'var(--ink-2)' }} />} />
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
-        <input value={a} onChange={(e) => setA(e.target.value)} placeholder={placeholderA} className="flex-1 px-3 py-2 rounded-xl bg-transparent glass text-sm focus-ring" />
-        <input value={b} onChange={(e) => setB(e.target.value)} placeholder={placeholderB} className="flex-1 px-3 py-2 rounded-xl bg-transparent glass text-sm focus-ring" />
-        <button className="glass rounded-xl px-4 py-2 press-scale flex items-center gap-1 justify-center" onClick={() => { if (a.trim()) { onAdd(a.trim(), b.trim()); setA(''); setB(''); } }}>
-          <Plus size={15} /> Ajouter
-        </button>
       </div>
-      <div className="space-y-2">
-        {items.map((it) => (
-          <div key={it.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl glass">
-            <span className="font-medium text-sm">{it.name}</span>
-            <span className="text-xs ml-2" style={{ color: 'var(--ink-2)' }}>{it[fieldB]}</span>
-            <button className="ml-auto press-scale" onClick={() => onRemove(it.id)}><Trash2 size={14} style={{ color: 'var(--bad)' }} /></button>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <h3 className="text-sm font-mono text-slate-500 mb-3">ترتيب الأولوية الكامل</h3>
+          <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+            {rankedModules.map((m, i) => {
+              const c = COLOR_MAP[m.color];
+              return (
+                <div key={m.id} className="flex items-center gap-2 text-sm py-1.5 border-b border-slate-800/60 last:border-0">
+                  <span className="w-5 text-xs text-slate-600 font-mono">{i + 1}</span>
+                  <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+                  <span className="flex-1 truncate">{m.id} — {m.name}</span>
+                  <span className="text-xs font-mono text-slate-500">{priorityScore(m).toFixed(1)}</span>
+                </div>
+              );
+            })}
           </div>
-        ))}
-        {!items.length && <div className="text-sm text-center py-6" style={{ color: 'var(--ink-2)' }}>Rien pour l’instant.</div>}
-      </div>
-    </GlassCard>
-  );
-}
+        </div>
 
-/* ============================================================
-   CALENDAR
-   ============================================================ */
-function CalendarView({ examDate, setExamDate, goals, daysToExam }) {
-  return (
-    <div className="space-y-6 anim-in grid md:grid-cols-2 gap-4">
-      <GlassCard className="p-5">
-        <SectionTitle title="Examen final" />
-        <input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-transparent glass text-sm focus-ring mb-3" />
-        <div className="font-display text-3xl font-bold">{daysToExam} <span className="text-base font-normal" style={{ color: 'var(--ink-2)' }}>jours restants</span></div>
-      </GlassCard>
-      <GlassCard className="p-5">
-        <SectionTitle title="Échéances (objectifs)" />
-        <div className="space-y-2">
-          {[...goals.weekly, ...goals.monthly].map((g) => (
-            <div key={g.id} className="flex items-center gap-2 text-sm py-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
-              {g.done ? <CheckCircle2 size={15} color="var(--good)" /> : <Circle size={15} style={{ color: 'var(--ink-2)' }} />}
-              <span>{g.label}</span>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <h3 className="text-sm font-mono text-slate-500 mb-3">التدريب (Stage)</h3>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <div>
+              <div className="font-semibold">{STAGE.name}</div>
+              <div className="text-xs text-slate-500">{STAGE.weeks} أسابيع</div>
             </div>
-          ))}
+            <button
+              onClick={() => setStageDone(!stageDone)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm border ${
+                stageDone ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300" : "bg-slate-800 border-slate-700 text-slate-400"
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" /> {stageDone ? "منجز" : "تحديد كمنجز"}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+            المعادلة: الأولوية = (المعامل × 2) + فجوة التمكن + الصعوبة + قرب الامتحان.
+            هاد الترتيب كيتبدل أوتوماتيكيا كل ما بدّلتي التمكن ولا الصعوبة ولا تاريخ الامتحان فتبويب "الموديولات".
+          </p>
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 }
 
-/* ============================================================
-   TASKS
-   ============================================================ */
-function TasksView({ tasks, taskInput, setTaskInput, addTask, toggleTask, removeTask }) {
+function ProgressChart({ history }) {
+  const data = history.map((h) => ({
+    date: h.date.slice(5),
+    "التمكن %": h.mastery,
+    "المعدل ×5": Number((h.avg * 5).toFixed(1)),
+  }));
   return (
-    <GlassCard className="p-5 anim-in">
-      <SectionTitle title="Tâches" />
-      <div className="flex gap-2 mb-4">
-        <input value={taskInput} onChange={(e) => setTaskInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTask()}
-          placeholder="Nouvelle tâche…" className="flex-1 px-3 py-2 rounded-xl bg-transparent glass text-sm focus-ring" />
-        <button onClick={addTask} className="glass rounded-xl px-4 py-2 press-scale flex items-center gap-1"><Plus size={15} /> Ajouter</button>
+    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+      <h3 className="text-sm font-mono text-slate-500 mb-3">تطور التمكن العام والمعدل عبر الوقت</h3>
+      <div style={{ width: "100%", height: 220 }}>
+        <ResponsiveContainer>
+          <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+            <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} />
+            <YAxis domain={[0, 100]} tick={{ fill: "#64748b", fontSize: 11 }} />
+            <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155", fontSize: 12 }} />
+            <Line type="monotone" dataKey="التمكن %" stroke="#fbbf24" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="المعدل ×5" stroke="#38bdf8" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
-      <div className="space-y-2">
-        {tasks.map((t) => (
-          <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl glass">
-            <button onClick={() => toggleTask(t.id)} className="press-scale">
-              {t.done ? <CheckCircle2 size={17} color="var(--good)" /> : <Circle size={17} style={{ color: 'var(--ink-2)' }} />}
-            </button>
-            <span className="text-sm" style={{ textDecoration: t.done ? 'line-through' : 'none', color: t.done ? 'var(--ink-2)' : 'var(--ink-0)' }}>{t.title}</span>
-            <button className="ml-auto press-scale" onClick={() => removeTask(t.id)}><Trash2 size={14} style={{ color: 'var(--bad)' }} /></button>
-          </div>
-        ))}
-      </div>
-    </GlassCard>
+      <p className="text-[11px] text-slate-600 mt-2">* المعدل مضروب في 5 باش يبان على نفس المقياس ديال التمكن (0-100).</p>
+    </div>
   );
 }
 
-/* ============================================================
-   GOALS
-   ============================================================ */
-function GoalsView({ goals, toggleGoal }) {
+/* ---------------------------------------------------------------------
+   تبويب: الموديولات + النقط
+--------------------------------------------------------------------- */
+function ModulesTab({ state, updateModule, addGrade, removeGrade, moduleAvg }) {
+  const [open, setOpen] = useState(null);
+  const groups = [...new Set(MODULES_SEED.map((m) => m.group))];
+
   return (
-    <div className="grid md:grid-cols-2 gap-4 anim-in">
-      {['weekly', 'monthly'].map((scope) => (
-        <GlassCard key={scope} className="p-5">
-          <SectionTitle title={scope === 'weekly' ? 'Objectifs de la semaine' : 'Objectifs du mois'} />
-          <div className="space-y-2">
-            {goals[scope].map((g) => (
-              <button key={g.id} onClick={() => toggleGoal(scope, g.id)} className="w-full flex items-center gap-2 text-sm text-left px-3 py-2.5 rounded-xl glass press-scale">
-                {g.done ? <CheckCircle2 size={16} color="var(--good)" /> : <Circle size={16} style={{ color: 'var(--ink-2)' }} />}
-                <span style={{ textDecoration: g.done ? 'line-through' : 'none', color: g.done ? 'var(--ink-2)' : 'var(--ink-0)' }}>{g.label}</span>
-              </button>
-            ))}
+    <div className="space-y-8">
+      {groups.map((g) => (
+        <div key={g}>
+          <h3 className="text-sm font-mono text-slate-500 mb-3">{g}</h3>
+          <div className="space-y-3">
+            {MODULES_SEED.filter((m) => m.group === g).map((m) => {
+              const c = COLOR_MAP[m.color];
+              const md = state.modules[m.id];
+              const avg = moduleAvg(m.id);
+              const isOpen = open === m.id;
+              return (
+                <div key={m.id} className={`rounded-xl border border-slate-800 bg-slate-900/40 ring-1 ${c.ring} overflow-hidden`}>
+                  <button
+                    onClick={() => setOpen(isOpen ? null : m.id)}
+                    className="w-full flex items-center gap-3 p-4 text-right"
+                  >
+                    <span className={`text-xs font-mono px-2 py-0.5 rounded ${c.bg} ${c.text}`}>{m.id}</span>
+                    <div className="flex-1">
+                      <div className="font-semibold text-slate-100">{m.name}</div>
+                      <div className="text-xs text-slate-500 font-mono flex gap-3 mt-0.5">
+                        <span><Clock className="w-3 h-3 inline ml-1" />{m.hours}h</span>
+                        <span>Coef {m.coef}</span>
+                        {avg !== null && <span className={avg >= 10 ? "text-emerald-400" : "text-rose-400"}>معدل {avg.toFixed(2)}/20</span>}
+                      </div>
+                    </div>
+                    <div className="w-24 hidden sm:block">
+                      <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div className={`h-full ${c.bar}`} style={{ width: `${md.mastery}%` }} />
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-1 text-center">{md.mastery}%</div>
+                    </div>
+                    {isOpen ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-4 pb-4 border-t border-slate-800 pt-4 space-y-4">
+                      <div className="grid sm:grid-cols-3 gap-4">
+                        <label className="text-xs text-slate-500 font-mono">
+                          نسبة التمكن: <span className="text-slate-200">{md.mastery}%</span>
+                          <input type="range" min="0" max="100" value={md.mastery}
+                            onChange={(e) => updateModule(m.id, { mastery: Number(e.target.value) })}
+                            className="w-full accent-amber-400 mt-1" />
+                        </label>
+                        <label className="text-xs text-slate-500 font-mono">
+                          الصعوبة: <span className="text-slate-200">{md.difficulty}/5</span>
+                          <input type="range" min="1" max="5" value={md.difficulty}
+                            onChange={(e) => updateModule(m.id, { difficulty: Number(e.target.value) })}
+                            className="w-full accent-rose-400 mt-1" />
+                        </label>
+                        <label className="text-xs text-slate-500 font-mono">
+                          تاريخ الامتحان القادم
+                          <input type="date" value={md.examDate}
+                            onChange={(e) => updateModule(m.id, { examDate: e.target.value })}
+                            className="w-full mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200" />
+                        </label>
+                      </div>
+
+                      <label className="block text-xs text-slate-500 font-mono">
+                        نقاط الضعف / ملاحظات
+                        <textarea value={md.weakness} rows={2}
+                          onChange={(e) => updateModule(m.id, { weakness: e.target.value })}
+                          placeholder="مثلا: تايفوتني الوقت فحساب isostatisme..."
+                          className="w-full mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-sm" />
+                      </label>
+
+                      <GradesEditor moduleId={m.id} grades={md.grades} onAdd={addGrade} onRemove={removeGrade} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </GlassCard>
+        </div>
       ))}
     </div>
   );
 }
 
-/* ============================================================
-   NOTES
-   ============================================================ */
-function NotesView({ notes, setNotes, logActivity }) {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  return (
-    <div className="space-y-4 anim-in">
-      <GlassCard className="p-5">
-        <SectionTitle title="Nouvelle note" />
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre" className="w-full px-3 py-2 rounded-xl bg-transparent glass text-sm focus-ring mb-2" />
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Contenu…" rows={3} className="w-full px-3 py-2 rounded-xl bg-transparent glass text-sm focus-ring mb-2" />
-        <button className="glass rounded-xl px-4 py-2 press-scale flex items-center gap-1" onClick={() => {
-          if (!title.trim()) return;
-          setNotes((n) => [{ id: uid(), title, body }, ...n]);
-          logActivity(`Note ajoutée : ${title}`);
-          setTitle(''); setBody('');
-        }}><Plus size={15} /> Enregistrer</button>
-      </GlassCard>
-      <div className="grid md:grid-cols-2 gap-4">
-        {notes.map((n) => (
-          <GlassCard key={n.id} className="p-4">
-            <div className="flex justify-between items-start mb-1">
-              <div className="font-semibold text-sm">{n.title}</div>
-              <button onClick={() => setNotes((list) => list.filter((x) => x.id !== n.id))}><Trash2 size={13} style={{ color: 'var(--bad)' }} /></button>
-            </div>
-            <p className="text-sm" style={{ color: 'var(--ink-1)' }}>{n.body}</p>
-          </GlassCard>
-        ))}
-      </div>
-    </div>
-  );
-}
+function GradesEditor({ moduleId, grades, onAdd, onRemove }) {
+  const [type, setType] = useState("Contrôle");
+  const [value, setValue] = useState("");
+  const [date, setDate] = useState(todayISO());
 
-/* ============================================================
-   STATISTICS
-   ============================================================ */
-function StatisticsView({ categoryStats, history, enriched }) {
-  return (
-    <div className="space-y-6 anim-in">
-      <div className="grid md:grid-cols-2 gap-4">
-        <GlassCard className="p-5"><SectionTitle title="Moyenne par catégorie" /><MiniBars data={categoryStats.map((c) => ({ label: c.label, value: c.hasData ? c.value : null, color: c.color }))} /></GlassCard>
-        <GlassCard className="p-5 flex flex-col items-center"><SectionTitle title="Vue radar" /><Radar data={categoryStats} /></GlassCard>
-      </div>
-      <GlassCard className="p-5"><SectionTitle title="Historique de la moyenne générale" /><Sparkline points={history} /></GlassCard>
-      <GlassCard className="p-5">
-        <SectionTitle title="Répartition par coefficient" />
-        <MiniBars max={enriched.length} data={[2, 3, 4, 1].map((coef) => ({ label: `Coef ${coef}`, value: enriched.filter((m) => m.coef === coef).length, color: 'var(--accent)' }))} />
-      </GlassCard>
-    </div>
-  );
-}
+  const submit = () => {
+    if (value === "" || isNaN(Number(value))) return;
+    onAdd(moduleId, { id: uid(), type, value: Number(value), date });
+    setValue("");
+  };
 
-/* ============================================================
-   REPORTS
-   ============================================================ */
-function ReportsView(props) {
-  const { overall, controleAvg, tpAvg, efmAvg, regionalAvg, successRate, completion, attendanceRate, performanceScore } = props;
-  const rows = [
-    ['Moyenne générale', overall != null ? `${round1(overall)}/20` : '—'],
-    ['Moyenne Contrôle', controleAvg != null ? `${round1(controleAvg)}/20` : '—'],
-    ['Moyenne TP', tpAvg != null ? `${round1(tpAvg)}/20` : '—'],
-    ['Moyenne EFM', efmAvg != null ? `${round1(efmAvg)}/20` : '—'],
-    ['Moyenne Régional', regionalAvg != null ? `${round1(regionalAvg)}/20` : '—'],
-    ['Taux de réussite', successRate != null ? `${Math.round(successRate)}%` : '—'],
-    ['Progression de saisie', `${Math.round(completion)}%`],
-    ['Assiduité', `${Math.round(attendanceRate)}%`],
-    ['Score de performance', `${performanceScore}%`],
-  ];
   return (
-    <GlassCard className="p-6 anim-in max-w-2xl">
-      <SectionTitle eyebrow={new Date().toLocaleDateString('fr-FR')} title="Rapport de synthèse — Ayoub Taoufik" />
-      <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
-        {rows.map(([l, v]) => (
-          <div key={l} className="flex justify-between py-2.5 text-sm" style={{ borderBottom: '1px solid var(--line)' }}>
-            <span style={{ color: 'var(--ink-2)' }}>{l}</span><span className="font-mono font-semibold">{v}</span>
+    <div>
+      <div className="text-xs text-slate-500 font-mono mb-2">النقط</div>
+      <div className="flex flex-wrap gap-2 mb-3">
+        {grades.map((g) => (
+          <div key={g.id} className="flex items-center gap-2 text-xs bg-slate-950 border border-slate-700 rounded-full px-3 py-1">
+            <span className="text-slate-400">{g.type}</span>
+            <span className={Number(g.value) >= 10 ? "text-emerald-400" : "text-rose-400"}>{g.value}/20</span>
+            <button onClick={() => onRemove(moduleId, g.id)} className="text-slate-600 hover:text-rose-400">
+              <Trash2 className="w-3 h-3" />
+            </button>
           </div>
         ))}
+        {!grades.length && <span className="text-xs text-slate-600">مازال ما دخلتيش نقط</span>}
       </div>
-      <p className="text-xs mt-4" style={{ color: 'var(--ink-2)' }}>Généré automatiquement à partir des données actuelles du système — se met à jour à chaque modification.</p>
-    </GlassCard>
+      <div className="flex flex-wrap gap-2 items-end">
+        <select value={type} onChange={(e) => setType(e.target.value)}
+          className="bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200">
+          <option>Contrôle</option>
+          <option>EFM</option>
+          <option>Régional</option>
+          <option>TP</option>
+        </select>
+        <input type="number" min="0" max="20" step="0.25" value={value} onChange={(e) => setValue(e.target.value)}
+          placeholder="النقطة /20" className="w-28 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200" />
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+          className="bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200" />
+        <button onClick={submit} className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/40 text-amber-300 rounded px-3 py-1.5 text-sm">
+          <Plus className="w-3.5 h-3.5" /> إضافة
+        </button>
+      </div>
+    </div>
   );
 }
 
-/* ============================================================
-   NOTIFICATIONS
-   ============================================================ */
-function NotificationsView({ enriched, attendanceRate, activity }) {
-  const alerts = [];
-  enriched.forEach((m) => { if (m.final != null && m.final < 10) alerts.push({ id: m.id, text: `⚠️ ${m.name} est sous la moyenne (${round1(m.final)}/20)`, kind: 'bad' }); });
-  if (attendanceRate < 75) alerts.push({ id: 'att', text: `⚠️ Assiduité faible (${Math.round(attendanceRate)}%)`, kind: 'bad' });
-  enriched.forEach((m) => { if (m.final != null && m.final >= 16) alerts.push({ id: m.id + '-good', text: `✅ Excellente moyenne en ${m.name} (${round1(m.final)}/20)`, kind: 'good' }); });
+/* ---------------------------------------------------------------------
+   تبويب: الأساتذة
+--------------------------------------------------------------------- */
+function TeachersTab({ state, setState }) {
+  const empty = { id: "", name: "", moduleId: MODULES_SEED[0].id, style: "", participatory: "متوسط", examDifficulty: "متوسط", notes: "" };
+  const [draft, setDraft] = useState(empty);
+
+  const add = () => {
+    if (!draft.name.trim()) return;
+    setState((s) => ({ ...s, teachers: [...s.teachers, { ...draft, id: uid() }] }));
+    setDraft(empty);
+  };
+  const remove = (id) => setState((s) => ({ ...s, teachers: s.teachers.filter((t) => t.id !== id) }));
 
   return (
-    <div className="space-y-4 anim-in">
-      <GlassCard className="p-5">
-        <SectionTitle title="Alertes basées sur vos données" />
-        <div className="space-y-2">
-          {alerts.length ? alerts.map((a) => (
-            <div key={a.id} className="text-sm px-3 py-2.5 rounded-xl glass" style={{ color: a.kind === 'bad' ? 'var(--bad)' : 'var(--good)' }}>{a.text}</div>
-          )) : <div className="text-sm text-center py-6" style={{ color: 'var(--ink-2)' }}>Aucune alerte — tout va bien 👌</div>}
+    <div className="space-y-6">
+      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <h3 className="text-sm font-mono text-slate-500 mb-3">إضافة أستاذ</h3>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <input placeholder="اسم الأستاذ" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <select value={draft.moduleId} onChange={(e) => setDraft({ ...draft, moduleId: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+            {MODULES_SEED.map((m) => <option key={m.id} value={m.id}>{m.id} — {m.name}</option>)}
+          </select>
+          <input placeholder="طريقة الشرح" value={draft.style} onChange={(e) => setDraft({ ...draft, style: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <select value={draft.participatory} onChange={(e) => setDraft({ ...draft, participatory: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+            <option>يحب المشاركة</option><option>متوسط</option><option>لا يحب المشاركة</option>
+          </select>
+          <select value={draft.examDifficulty} onChange={(e) => setDraft({ ...draft, examDifficulty: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+            <option>امتحانه سهل</option><option>متوسط</option><option>امتحانه صعب</option>
+          </select>
+          <input placeholder="أفضل طريقة للتعامل معه" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm sm:col-span-2" />
         </div>
-      </GlassCard>
-      <GlassCard className="p-5">
-        <SectionTitle title="Journal complet" />
-        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-          {activity.map((a) => (
-            <div key={a.id} className="flex justify-between text-sm py-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
-              <span style={{ color: 'var(--ink-1)' }}>{a.text}</span>
-              <span className="text-xs shrink-0 ml-3" style={{ color: 'var(--ink-2)' }}>{new Date(a.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+        <button onClick={add} className="mt-3 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/40 text-amber-300 rounded px-3 py-1.5 text-sm">
+          <Plus className="w-4 h-4" /> إضافة الأستاذ
+        </button>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        {state.teachers.map((t) => {
+          const m = MODULES_SEED.find((mm) => mm.id === t.moduleId);
+          return (
+            <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 relative">
+              <button onClick={() => remove(t.id)} className="absolute left-3 top-3 text-slate-600 hover:text-rose-400">
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="font-semibold text-slate-100">{t.name}</div>
+              <div className="text-xs text-amber-300 font-mono mb-2">{m?.id} — {m?.name}</div>
+              <div className="text-xs text-slate-400 space-y-1">
+                {t.style && <div>الشرح: {t.style}</div>}
+                <div>المشاركة: {t.participatory}</div>
+                <div>الامتحان: {t.examDifficulty}</div>
+                {t.notes && <div className="text-slate-500 italic">💡 {t.notes}</div>}
+              </div>
             </div>
-          ))}
-        </div>
-      </GlassCard>
+          );
+        })}
+        {!state.teachers.length && <p className="text-sm text-slate-600">مازال ما زدتي حتى أستاذ.</p>}
+      </div>
     </div>
   );
 }
 
-/* ============================================================
-   AI COACH (local, rule-based — no external key required)
-   ============================================================ */
-function AiCoachView({ overall, categoryStats, attendanceRate, completion, studyHours, weeklyGoalHours }) {
-  const withData = categoryStats.filter((c) => c.hasData);
-  const weakest = withData.length ? withData.reduce((a, b) => (a.value < b.value ? a : b)) : null;
-  const strongest = withData.length ? withData.reduce((a, b) => (a.value > b.value ? a : b)) : null;
+/* ---------------------------------------------------------------------
+   تبويب: الزملاء
+--------------------------------------------------------------------- */
+const SKILLS = ["SolidWorks", "Français", "Math", "Programmation CNC", "CAO", "FAO", "RDM", "Métrologie"];
 
-  const tips = [];
-  if (weakest) tips.push(`Concentre tes prochaines heures d’étude sur « ${weakest.label} » — c’est ta catégorie la plus faible (${round1(weakest.value)}/20).`);
-  if (attendanceRate < 80) tips.push(`Ton assiduité est à ${Math.round(attendanceRate)}% — vise 90%+ pour sécuriser tes points de contrôle continu.`);
-  if (completion < 50) tips.push(`Seulement ${Math.round(completion)}% des notes sont saisies — complète le tableau des notes pour une vue fiable de ta moyenne.`);
-  if (studyHours < weeklyGoalHours) tips.push(`Il te manque ${weeklyGoalHours - studyHours}h pour atteindre ton objectif hebdomadaire d’étude.`);
-  if (!tips.length) tips.push('Tout est sur les rails — continue sur cette lancée 🚀');
+function PeersTab({ state, setState }) {
+  const [name, setName] = useState("");
+  const [skills, setSkills] = useState([]);
+
+  const toggleSkill = (s) => setSkills((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
+  const add = () => {
+    if (!name.trim()) return;
+    setState((st) => ({ ...st, peers: [...st.peers, { id: uid(), name, skills }] }));
+    setName(""); setSkills([]);
+  };
+  const remove = (id) => setState((st) => ({ ...st, peers: st.peers.filter((p) => p.id !== id) }));
 
   return (
-    <div className="space-y-4 anim-in">
-      <GlassCard className="p-6">
-        <div className="flex items-center gap-2 mb-4"><Bot size={20} style={{ color: 'var(--accent)' }} /><h2 className="font-display text-xl font-semibold">Coach d’étude</h2></div>
-        <div className="grid sm:grid-cols-2 gap-3 mb-5">
-          <div className="rounded-2xl p-4 glass"><div className="text-xs" style={{ color: 'var(--ink-2)' }}>Point fort</div><div className="font-semibold mt-1">{strongest ? strongest.label : '—'}</div></div>
-          <div className="rounded-2xl p-4 glass"><div className="text-xs" style={{ color: 'var(--ink-2)' }}>À renforcer</div><div className="font-semibold mt-1">{weakest ? weakest.label : '—'}</div></div>
-        </div>
-        <div className="space-y-2">
-          {tips.map((t, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm px-3 py-2.5 rounded-xl glass"><Sparkles size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} /><span>{t}</span></div>
-          ))}
-        </div>
-        <p className="text-xs mt-4" style={{ color: 'var(--ink-2)' }}>
-          Ce coach analyse localement tes données (aucune clé API requise). Il peut être branché plus tard sur l’API Claude pour des conseils encore plus fins.
-        </p>
-      </GlassCard>
-    </div>
-  );
-}
-
-/* ============================================================
-   SETTINGS
-   ============================================================ */
-function SettingsView({ weights, setWeights, weeklyGoalHours, setWeeklyGoalHours, theme, setTheme, onReset }) {
-  return (
-    <div className="space-y-4 anim-in max-w-xl">
-      <GlassCard className="p-5">
-        <SectionTitle title="Apparence" />
-        <div className="flex gap-2">
-          {['dark', 'light'].map((t) => (
-            <button key={t} onClick={() => setTheme(t)} className="flex-1 py-2.5 rounded-xl text-sm press-scale glass" style={{ border: theme === t ? '1px solid var(--accent)' : '1px solid var(--glass-border)', color: theme === t ? 'var(--accent)' : 'var(--ink-1)' }}>
-              {t === 'dark' ? 'Sombre' : 'Clair'}
+    <div className="space-y-6">
+      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <h3 className="text-sm font-mono text-slate-500 mb-3">إضافة زميل</h3>
+        <input placeholder="اسم الزميل" value={name} onChange={(e) => setName(e.target.value)}
+          className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm w-full mb-3" />
+        <div className="flex flex-wrap gap-2 mb-3">
+          {SKILLS.map((s) => (
+            <button key={s} onClick={() => toggleSkill(s)}
+              className={`text-xs px-3 py-1 rounded-full border ${skills.includes(s) ? "bg-sky-500/10 border-sky-500/40 text-sky-300" : "bg-slate-950 border-slate-700 text-slate-400"}`}>
+              {s}
             </button>
           ))}
         </div>
-      </GlassCard>
-      <GlassCard className="p-5">
-        <SectionTitle title="Objectif hebdomadaire d’étude" />
-        <input type="number" min="1" value={weeklyGoalHours} onChange={(e) => setWeeklyGoalHours(Number(e.target.value) || 1)} className="w-24 px-3 py-2 rounded-xl bg-transparent glass text-sm focus-ring" /> <span className="text-sm ml-2" style={{ color: 'var(--ink-2)' }}>heures / semaine</span>
-      </GlassCard>
-      <GlassCard className="p-5">
-        <SectionTitle title="Zone dangereuse" />
-        <button onClick={onReset} className="px-4 py-2.5 rounded-xl text-sm press-scale" style={{ background: 'color-mix(in srgb, var(--bad) 15%, transparent)', color: 'var(--bad)' }}>
-          Réinitialiser toutes les notes
+        <button onClick={add} className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/40 text-amber-300 rounded px-3 py-1.5 text-sm">
+          <Plus className="w-4 h-4" /> إضافة
         </button>
-      </GlassCard>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-mono text-slate-500 mb-3">مين نقدر نسول إيلا احتجت مساعدة</h3>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {state.peers.map((p) => (
+            <div key={p.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 relative">
+              <button onClick={() => remove(p.id)} className="absolute left-3 top-3 text-slate-600 hover:text-rose-400">
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="font-semibold mb-2">{p.name}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {p.skills.map((s) => (
+                  <span key={s} className="text-[11px] bg-sky-500/10 text-sky-300 border border-sky-500/30 rounded-full px-2 py-0.5">{s}</span>
+                ))}
+                {!p.skills.length && <span className="text-xs text-slate-600">بلا تخصص محدد</span>}
+              </div>
+            </div>
+          ))}
+          {!state.peers.length && <p className="text-sm text-slate-600">مازال ما زدتي حتى زميل.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------
+   تبويب: سجل الامتحانات
+--------------------------------------------------------------------- */
+const CAUSES = ["الوقت", "نسيان", "عدم فهم", "قلة تدريب"];
+
+function ExamsTab({ state, setState }) {
+  const empty = { moduleId: MODULES_SEED[0].id, date: todayISO(), duration: "", grade: "", mistakes: "", cause: CAUSES[0] };
+  const [draft, setDraft] = useState(empty);
+
+  const add = () => {
+    setState((s) => ({ ...s, exams: [{ ...draft, id: uid() }, ...s.exams] }));
+    setDraft(empty);
+  };
+  const remove = (id) => setState((s) => ({ ...s, exams: s.exams.filter((e) => e.id !== id) }));
+
+  const causeCounts = CAUSES.map((c) => ({ c, n: state.exams.filter((e) => e.cause === c).length }));
+  const maxN = Math.max(1, ...causeCounts.map((x) => x.n));
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <h3 className="text-sm font-mono text-slate-500 mb-3">تسجيل امتحان / اختبار</h3>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <select value={draft.moduleId} onChange={(e) => setDraft({ ...draft, moduleId: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm sm:col-span-2">
+            {MODULES_SEED.map((m) => <option key={m.id} value={m.id}>{m.id} — {m.name}</option>)}
+          </select>
+          <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <input placeholder="المدة (د)" type="number" value={draft.duration} onChange={(e) => setDraft({ ...draft, duration: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <input placeholder="النقطة /20" type="number" value={draft.grade} onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <select value={draft.cause} onChange={(e) => setDraft({ ...draft, cause: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+            {CAUSES.map((c) => <option key={c}>{c}</option>)}
+          </select>
+          <textarea placeholder="وصف الأخطاء" rows={2} value={draft.mistakes} onChange={(e) => setDraft({ ...draft, mistakes: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm sm:col-span-3" />
+        </div>
+        <button onClick={add} className="mt-3 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/40 text-amber-300 rounded px-3 py-1.5 text-sm">
+          <Plus className="w-4 h-4" /> تسجيل
+        </button>
+      </div>
+
+      {!!state.exams.length && (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <h3 className="text-sm font-mono text-slate-500 mb-3">أين كنتاي تايضيع النقط؟</h3>
+          <div className="space-y-2">
+            {causeCounts.map(({ c, n }) => (
+              <div key={c} className="flex items-center gap-3 text-sm">
+                <span className="w-24 text-slate-400">{c}</span>
+                <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div className="h-full bg-rose-400" style={{ width: `${(n / maxN) * 100}%` }} />
+                </div>
+                <span className="w-6 text-xs text-slate-500 font-mono">{n}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {state.exams.map((e) => {
+          const m = MODULES_SEED.find((mm) => mm.id === e.moduleId);
+          return (
+            <div key={e.id} className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3 text-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <div className="flex-1">
+                <span className="text-slate-200 font-medium">{m?.id}</span>
+                <span className="text-slate-500"> — {e.date} — {e.cause}</span>
+                {e.mistakes && <div className="text-xs text-slate-500 mt-0.5">{e.mistakes}</div>}
+              </div>
+              {e.grade !== "" && <span className={Number(e.grade) >= 10 ? "text-emerald-400" : "text-rose-400"}>{e.grade}/20</span>}
+              <button onClick={() => remove(e.id)} className="text-slate-600 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------
+   تبويب: دفتر الدروس المستفادة (Lessons Learned)
+--------------------------------------------------------------------- */
+function JournalTab({ state, setState }) {
+  const empty = { date: todayISO(), worked: "", didntWork: "", why: "", change: "" };
+  const [draft, setDraft] = useState(empty);
+
+  const add = () => {
+    if (!draft.worked && !draft.didntWork && !draft.change) return;
+    setState((s) => ({ ...s, journal: [{ ...draft, id: uid() }, ...s.journal] }));
+    setDraft(empty);
+  };
+  const remove = (id) => setState((s) => ({ ...s, journal: s.journal.filter((j) => j.id !== id) }));
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <h3 className="text-sm font-mono text-slate-500 mb-3">تسجيل أسبوعي</h3>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm sm:col-span-2" />
+          <textarea placeholder="واش نجح هاد الأسبوع؟" rows={2} value={draft.worked} onChange={(e) => setDraft({ ...draft, worked: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <textarea placeholder="واش ما نجحش؟" rows={2} value={draft.didntWork} onChange={(e) => setDraft({ ...draft, didntWork: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <textarea placeholder="علاش؟" rows={2} value={draft.why} onChange={(e) => setDraft({ ...draft, why: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+          <textarea placeholder="غادي نبدل شنو الأسبوع الجاي؟" rows={2} value={draft.change} onChange={(e) => setDraft({ ...draft, change: e.target.value })}
+            className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm" />
+        </div>
+        <button onClick={add} className="mt-3 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/40 text-amber-300 rounded px-3 py-1.5 text-sm">
+          <Plus className="w-4 h-4" /> حفظ التسجيلة
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {state.journal.map((j) => (
+          <div key={j.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 relative">
+            <button onClick={() => remove(j.id)} className="absolute left-3 top-3 text-slate-600 hover:text-rose-400">
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <div className="text-xs text-slate-500 font-mono mb-2">{j.date}</div>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              {j.worked && <div><span className="text-emerald-400">✓ نجح:</span> {j.worked}</div>}
+              {j.didntWork && <div><span className="text-rose-400">✗ ما نجحش:</span> {j.didntWork}</div>}
+              {j.why && <div className="text-slate-400">علاش: {j.why}</div>}
+              {j.change && <div className="text-amber-300">تبديل: {j.change}</div>}
+            </div>
+          </div>
+        ))}
+        {!state.journal.length && <p className="text-sm text-slate-600">مازال ما كتبتي حتى تسجيلة أسبوعية.</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------
+   تبويب: المساعد الذكي (chat مخصص لكل Module عبر Claude API)
+--------------------------------------------------------------------- */
+function AiTab({ state, moduleAvg }) {
+  const [moduleId, setModuleId] = useState(MODULES_SEED[0].id);
+  const [chats, setChats] = useState({});
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef(null);
+
+  const messages = chats[moduleId] || [];
+  const m = MODULES_SEED.find((mm) => mm.id === moduleId);
+  const md = state.modules[moduleId];
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+
+  const send = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = { role: "user", content: input };
+    const nextMessages = [...messages, userMsg];
+    setChats((c) => ({ ...c, [moduleId]: nextMessages }));
+    setInput("");
+    setLoading(true);
+    try {
+      const avg = moduleAvg(moduleId);
+      const sys = `أنت مساعد دراسي متخصص فمودول "${m.name}" (${m.id}, Coef ${m.coef}, ${m.hours}h) فبرنامج TSMFM بالمغرب (تقني متخصص فطرق الصنع الميكانيكي). ` +
+        `مستوى تمكن الطالب حاليا: ${md.mastery}%. صعوبة المودول عنده: ${md.difficulty}/5. ` +
+        (avg !== null ? `معدله فهاد المودول: ${avg.toFixed(2)}/20. ` : "") +
+        (md.weakness ? `نقاط ضعفه: ${md.weakness}. ` : "") +
+        `جاوب بالدارجة المغربية أو الفرنسية التقنية حسب السؤال، بشكل مختصر ومباشر ومفيد للمراجعة، وركز على المحتوى التقني الحقيقي ديال المودول.`;
+
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system: sys,
+          messages: nextMessages.map((mm) => ({ role: mm.role, content: mm.content })),
+        }),
+      });
+      const data = await res.json();
+      const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n") || "ما قدرتش نجاوب دابا، عاود المحاولة.";
+      setChats((c) => ({ ...c, [moduleId]: [...nextMessages, { role: "assistant", content: text }] }));
+    } catch (e) {
+      setChats((c) => ({ ...c, [moduleId]: [...nextMessages, { role: "assistant", content: "وقع خطأ فالاتصال. عاود المحاولة." }] }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="grid md:grid-cols-[220px_1fr] gap-4">
+      <div className="space-y-1 max-h-[520px] overflow-y-auto pr-1">
+        {MODULES_SEED.map((mm) => {
+          const c = COLOR_MAP[mm.color];
+          const active = mm.id === moduleId;
+          return (
+            <button key={mm.id} onClick={() => setModuleId(mm.id)}
+              className={`w-full text-right px-3 py-2 rounded-lg text-xs border flex items-center gap-2 ${
+                active ? "bg-slate-800 border-amber-500/40" : "bg-slate-900/40 border-slate-800 text-slate-400"
+              }`}>
+              <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+              <span className="truncate">{mm.id}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rounded-xl border border-slate-800 bg-slate-900/40 flex flex-col h-[520px]">
+        <div className="p-3 border-b border-slate-800 text-sm">
+          <span className="text-amber-300 font-mono">{m.id}</span> — <span className="text-slate-300">{m.name}</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {!messages.length && (
+            <div className="text-xs text-slate-600 text-center mt-10">
+              اسول على شرح، ملخص، أسئلة تدريبية، ولا امتحان تجريبي فهاد المودول.
+            </div>
+          )}
+          {messages.map((mm, i) => (
+            <div key={i} className={`flex ${mm.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                mm.role === "user" ? "bg-amber-500/10 border border-amber-500/30 text-amber-100" : "bg-slate-800 text-slate-200"
+              }`}>
+                {mm.content}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> كيفكر...
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
+        <div className="p-3 border-t border-slate-800 flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder="اكتب سؤالك..."
+            className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm"
+          />
+          <button onClick={send} disabled={loading} className="bg-amber-500/10 border border-amber-500/40 text-amber-300 rounded px-3 py-2 disabled:opacity-40">
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
