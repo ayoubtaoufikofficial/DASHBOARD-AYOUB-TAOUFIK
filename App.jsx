@@ -558,7 +558,16 @@ const xpInLevel = modules.length > 0 ? Math.round((gradedModulesCount / modules.
     if (moduleSearch.trim() && !(`${m.name} ${m.id}`.toLowerCase().includes(moduleSearch.toLowerCase()))) return false;
     return true;
   }), [enriched, moduleFilterCat, moduleFilterStatus, moduleSearch]);
-
+React.useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [sidebarOpen]);
   /* ============================================================
      RENDER
      ============================================================ */
@@ -572,7 +581,7 @@ const xpInLevel = modules.length > 0 ? Math.round((gradedModulesCount / modules.
 
       <div className="relative z-10 flex min-h-screen">
         {/* SIDEBAR */}
-        <aside className={`fixed lg:static top-0 right-0 z-50 h-screen lg:h-auto w-72 shrink-0 transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <aside className={`fixed lg:static top-0 right-0 z-50 h-[100dvh] lg:h-auto w-72 shrink-0 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'} z-40`}>
         <GlassCard className="glass-strong p-4 flex-1 flex flex-col overflow-hidden">
               <div className="flex items-center gap-2 px-2 pb-4">
                 <Avatar size={36} frame="plain" rounded="rounded-xl" />
