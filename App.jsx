@@ -350,6 +350,7 @@ function ToastStack({ toasts }) {
    APP
    ============================================================ */
 export default function App() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useState('dark');
   const [accentTheme, setAccentTheme] = useState('violet');
   const [avatarFrame, setAvatarFrame] = useState('aura');
