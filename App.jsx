@@ -1,521 +1,391 @@
-import React, { useState, useEffect } from 'react';
-// استيراد صورتك الشخصية وشاشة الحماية الأصلية من ملفات مشروعك
-import AuthScreen from './AuthScreen';
-import profileImg from './FB_IMG_1750515617631.jpg';
+import { useState, useMemo } from 'react';
+import {
+  LayoutDashboard, BookOpen, Users, GraduationCap, ClipboardList,
+  FileCheck2, CalendarCheck2, Timer, ListChecks, CalendarDays,
+  FolderClosed, NotebookPen, Target, BarChart3, Sparkles, Bell,
+  Settings, Menu, Search, Clock, Layers,
+} from 'lucide-react';
 
-function App() {
-  // --- إعدادات الحالات والتحكم (State Management) ---
-  const [user, setUser] = useState(true); // نظام حماية وتسجيل الدخول والخروج
-  const [activeTab, setActiveTab] = useState('dashboard'); // التبويب النشط
-  
-  // شجرة موديولات TSMFM الكاملة للسنة الثانية مع إمكانية التعديل والحذف الكامل
-  const [modules, setModules] = useState([
-    { id: 'M206', name: "Conception et Dessin d'outillages de production", coef: 4, mark: '', status: 'active' },
-    { id: 'M203', name: "Élaboration et Constitution des dossiers de fabrication", coef: 4, mark: '', status: 'active' },
-    { id: 'M209', name: "Programmation, réglage et conduite des MOCN (CNC)", coef: 4, mark: '', status: 'active' },
-    { id: 'M201', name: "Analyse de fabrication et Laboratoire méthodes", coef: 3, mark: '', status: 'pending' },
-    { id: 'M202', name: "Gestion de la production et de la qualité", coef: 2, mark: '', status: 'pending' },
-    { id: 'M211', name: "Stage en entreprise (التدريب المهني)", coef: 3, mark: '', status: 'pending' },
-  ]);
+// ============================================================================
+// بيانات الوحدات الدراسية — مطابقة لشجرة TSMFM السنة الثانية (18 وحدة + تدريب)
+// ============================================================================
+const CATEGORIES = [
+  { id: 'lang', label: 'اللغات والتواصل', color: '#c084fc' },
+  { id: 'culture', label: 'الثقافة والتنمية الذاتية', color: '#34d399' },
+  { id: 'gestion', label: 'التدبير والتنظيم الصناعي', color: '#fb923c' },
+  { id: 'analyse', label: 'التحليل والمناهج', color: '#f472b6' },
+  { id: 'conception', label: 'التصميم والتجهيزات', color: '#38bdf8' },
+  { id: 'fabrication', label: 'الصنع والإنتاج (جوهر المهنة)', color: '#facc15' },
+];
 
-  // إدارة دليل الأساتذة بحرية مطلقة
-  const [teachers, setTeachers] = useState([
-    { id: 1, name: "أستاذ ورشة التصميم (Bureau d'études)", subject: "M206 + M203", contact: "BE@tsmfm.ma", note: "يركز بشدة على دقة رسومات قوالب التشكيل وأدوات الإنتاج." },
-    { id: 2, name: "أستاذ البرمجة والتصنيع الآلي", subject: "M209", contact: "cnc@tsmfm.ma", note: "تأكد من ضبط أكواد G-Code و M-Code واختبار المحاكاة للقطع الآلية." }
-  ]);
+const SUBJECTS = [
+  { code: 'EGTS202', name: 'Français', hours: 115, coef: 2, cat: 'lang' },
+  { code: 'EGTS203', name: 'Anglais technique', hours: 50, coef: 2, cat: 'lang' },
 
-  // نظام إدارة المهام اليومية (To-Do List) لزيادة الإنتاجية في المراجعة
-  const [tasks, setTasks] = useState([
-    { id: 1, text: "مراجعة رسم تصميم الأداة المرسل من الأستاذ لـ M206", completed: false, priority: "high" },
-    { id: 2, text: "كتابة ومحاكاة كود CNC لمخرطة الموديول M209", completed: true, priority: "medium" },
-    { id: 3, text: "تنظيم ملفات تصنيع الموديول M203 وتحضير المعاملات", completed: false, priority: "low" }
-  ]);
+  { code: 'EGTS204', name: 'Culture entrepreneuriale', hours: 45, coef: 2, cat: 'culture' },
+  { code: 'EGTS205', name: 'Compétences comportementales', hours: 30, coef: 2, cat: 'culture' },
+  { code: 'EGTSI206', name: 'Culture et techniques intermédiaires du numérique', hours: 30, coef: 1, cat: 'culture' },
 
-  // مدخلات النماذج الجديدة (Forms)
-  const [newModId, setNewModId] = useState('');
-  const [newModName, setNewModName] = useState('');
-  const [newModCoef, setNewModCoef] = useState('');
-  
-  const [newTeacherName, setNewTeacherName] = useState('');
-  const [newTeacherSub, setNewTeacherSub] = useState('');
-  const [newTeacherContact, setNewTeacherContact] = useState('');
-  const [newTeacherNote, setNewTeacherNote] = useState('');
+  { code: 'M205', name: 'Gestion de la production', hours: 30, coef: 2, cat: 'gestion' },
+  { code: 'M207', name: 'Calcul du prix de revient industriel et établissement du devis', hours: 30, coef: 2, cat: 'gestion' },
+  { code: 'M208', name: 'Optimisation et amélioration de la production', hours: 42, coef: 2, cat: 'gestion' },
+  { code: 'M210', name: "Conduite et gestion de projets d'industrialisation", hours: 40, coef: 2, cat: 'gestion' },
+  { code: 'M212', name: 'Démarche qualité', hours: 15, coef: 1, cat: 'gestion' },
 
-  const [newTaskText, setNewTaskText] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState('medium');
+  { code: 'M201', name: 'Analyse de produits et gamme de montage', hours: 45, coef: 2, cat: 'analyse' },
+  { code: 'M202', name: 'Détermination des temps de fabrication', hours: 30, coef: 2, cat: 'analyse' },
+  { code: 'M204', name: 'Statistiques en production', hours: 30, coef: 2, cat: 'analyse' },
 
-  // إعدادات مؤقت بومودورو للتركيز
-  const [pomodoro, setPomodoro] = useState(25 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerMode, setTimerMode] = useState('Work'); // Work, Short Break, Long Break
+  { code: 'M206', name: "Conception et Dessin d'outillages de production", hours: 88, coef: 4, cat: 'conception' },
 
-  // --- العمليات الحسابية والتحليلية العميقة للموقع ---
-  const handleMarkChange = (id, value) => {
-    if (value === '' || (parseFloat(value) >= 0 && parseFloat(value) <= 20)) {
-      setModules(modules.map(mod => mod.id === id ? { ...mod, mark: value } : mod));
-    }
-  };
+  { code: 'M203', name: 'Élaboration et Constitution des dossiers de fabrication', hours: 90, coef: 4, cat: 'fabrication' },
+  { code: 'M209', name: 'Programmation, réglage et conduite des MOCN', hours: 90, coef: 4, cat: 'fabrication' },
+  { code: 'M211', name: 'CAO / FAO', hours: 70, coef: 3, cat: 'fabrication' },
+];
 
-  const calculateDeepStats = () => {
-    let totalPoints = 0;
-    let totalCoefs = 0;
-    let evaluatedCount = 0;
-    let highest = { id: '-', mark: -1 };
-    let lowest = { id: '-', mark: 21 };
+const STAGE = { code: 'M213', name: 'Intégration en milieu de travail', duration: '4 أسابيع' };
 
-    modules.forEach(mod => {
-      const markValue = parseFloat(mod.mark);
-      if (!isNaN(markValue)) {
-        totalPoints += (markValue * mod.coef);
-        totalCoefs += mod.coef;
-        evaluatedCount++;
+// سجل التنقل — إضافة وحدة جديدة لاحقاً = سطر واحد هنا
+const NAV_GROUPS = [
+  { label: 'عام', items: [{ id: 'dashboard', label: 'لوحة القيادة', icon: LayoutDashboard }] },
+  {
+    label: 'الجانب الأكاديمي',
+    items: [
+      { id: 'modules', label: 'الوحدات الدراسية', icon: BookOpen },
+      { id: 'professors', label: 'الأساتذة', icon: Users },
+      { id: 'students', label: 'الزملاء', icon: GraduationCap },
+      { id: 'grades', label: 'النقط', icon: ClipboardList },
+      { id: 'exams', label: 'الامتحانات', icon: FileCheck2 },
+      { id: 'attendance', label: 'الحضور', icon: CalendarCheck2 },
+    ],
+  },
+  {
+    label: 'الإنتاجية',
+    items: [
+      { id: 'sessions', label: 'جلسات المراجعة', icon: Timer },
+      { id: 'tasks', label: 'المهام', icon: ListChecks },
+      { id: 'calendar', label: 'التقويم', icon: CalendarDays },
+      { id: 'goals', label: 'الأهداف', icon: Target },
+    ],
+  },
+  {
+    label: 'المعرفة والتحليلات',
+    items: [
+      { id: 'documents', label: 'الوثائق', icon: FolderClosed },
+      { id: 'notes', label: 'الملاحظات', icon: NotebookPen },
+      { id: 'statistics', label: 'الإحصائيات', icon: BarChart3 },
+      { id: 'ai', label: 'المساعد الذكي', icon: Sparkles },
+    ],
+  },
+  {
+    label: 'النظام',
+    items: [
+      { id: 'notifications', label: 'الإشعارات', icon: Bell },
+      { id: 'settings', label: 'الإعدادات', icon: Settings },
+    ],
+  },
+];
 
-        if (markValue > highest.mark) highest = { id: mod.id, mark: markValue };
-        if (markValue < lowest.mark) lowest = { id: mod.id, mark: markValue };
-      }
-    });
+const catInfo = (id) => CATEGORIES.find((c) => c.id === id);
 
-    const finalGpa = totalCoefs === 0 ? 0 : totalPoints / totalCoefs;
-    const generalMastery = finalGpa ? ((finalGpa / 20) * 100).toFixed(0) : 0;
-    
-    return {
-      gpa: finalGpa.toFixed(2),
-      mastery: generalMastery,
-      evaluatedCount,
-      totalCoefs,
-      highest: highest.mark === -1 ? 'لا يوجد' : `${highest.id} (${highest.mark}/20)`,
-      lowest: lowest.mark === 21 ? 'لا يوجد' : `${lowest.id} (${lowest.mark}/20)`
-    };
-  };
-
-  const stats = calculateDeepStats();
-
-  // --- دوال التحكم والإدارة الحرة (CRUD) ---
-  const addModule = (e) => {
-    e.preventDefault();
-    if (!newModId || !newModName || !newModCoef) return;
-    setModules([...modules, { id: newModId.toUpperCase(), name: newModName, coef: parseFloat(newModCoef), mark: '', status: 'active' }]);
-    setNewModId(''); setNewModName(''); setNewModCoef('');
-  };
-
-  const deleteModule = (id) => {
-    setModules(modules.filter(mod => mod.id !== id));
-  };
-
-  const addTeacher = (e) => {
-    e.preventDefault();
-    if (!newTeacherName || !newTeacherSub) return;
-    setTeachers([...teachers, { id: Date.now(), name: newTeacherName, subject: newTeacherSub, contact: newTeacherContact, note: newTeacherNote }]);
-    setNewTeacherName(''); setNewTeacherSub(''); setNewTeacherContact(''); setNewTeacherNote('');
-  };
-
-  const deleteTeacher = (id) => {
-    setTeachers(teachers.filter(t => t.id !== id));
-  };
-
-  const addTask = (e) => {
-    e.preventDefault();
-    if (!newTaskText) return;
-    setTasks([...tasks, { id: Date.now(), text: newTaskText, completed: false, priority: newTaskPriority }]);
-    setNewTaskText('');
-  };
-
-  const toggleTask = (id) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-  };
-
-  const deleteTask = (id) => {
-    setTasks(tasks.filter(t => t.id !== id));
-  };
-
-  // --- تشغيل ومراقبة مؤقت بومودورو ---
-  useEffect(() => {
-    let interval = null;
-    if (isTimerRunning && pomodoro > 0) {
-      interval = setInterval(() => setPomodoro(prev => prev - 1), 1000);
-    } else if (pomodoro === 0) {
-      setIsTimerRunning(false);
-      if (timerMode === 'Work') {
-        alert("انتهت جلسة العمل بنجاح! خذ قسطاً من الراحة الآن.");
-        setTimerMode('Break');
-        setPomodoro(5 * 60);
-      } else {
-        alert("انتهت الاستراحة! اعد شحن طاقتك للتركيز.");
-        setTimerMode('Work');
-        setPomodoro(25 * 60);
-      }
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, pomodoro, timerMode]);
-
-  const resetPomodoro = (mode) => {
-    setIsTimerRunning(false);
-    setTimerMode(mode);
-    setPomodoro(mode === 'Work' ? 25 * 60 : mode === 'Short' ? 5 * 60 : 15 * 60);
-  };
-
-  if (!user) {
-    return <AuthScreen onLogin={() => setUser(true)} />;
-  }
-
+// ============================================================================
+// عناصر واجهة زجاجية قابلة لإعادة الاستخدام
+// ============================================================================
+function GlassPanel({ children, className = '' }) {
   return (
-    <div className="min-h-screen p-4 max-w-3xl mx-auto font-sans antialiased text-white pb-24" style={{ direction: 'rtl' }}>
-      
-      {/* العداد والتحذير التنازلي التفاعلي المضيء للامتحانات */}
-      <div className="w-full bg-cyan-500/10 border border-cyan-500/20 rounded-2xl px-4 py-2.5 text-center text-xs font-bold text-cyan-400 mb-4 backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.1)] flex justify-between items-center">
-        <span>📢 إشعار المراجعة المستمرة:</span>
-        <span className="animate-pulse bg-cyan-500/20 px-3 py-1 rounded-full text-[11px]">الامتحان الجهوي EFM يقترب | جهز ملفاتك التقنية ورسوماتك</span>
-      </div>
-
-      {/* 1. رأس الصفحة الفاخر (Header) بالتصميم الزجاجي السائل والأيقونات والتاج */}
-      <div className="flex items-center justify-between p-4 liquid-glass mb-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl"></div>
-        <div className="flex gap-2 z-10">
-          <button title="تحميل التقرير الدراسي" className="p-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 transition text-sm">📥</button>
-          <button title="مشاركة البيانات حياً" className="p-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 transition text-sm">📤</button>
-        </div>
-
-        <div className="flex flex-col items-center z-10">
-          <span className="text-[10px] text-gray-400 font-extrabold tracking-widest bg-white/5 px-2 py-0.5 rounded-full border border-white/5">TSMFM • السنة الثانية</span>
-          <div className="relative mt-2.5 mb-1">
-            <span className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-xl drop-shadow-[0_0_10px_rgba(234,179,8,0.7)] animate-bounce">👑</span>
-            <h1 className="text-xl md:text-3xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-amber-200 to-yellow-500">
-              AYOUB TAOUFIK
-            </h1>
-          </div>
-          <p className="text-[11px] text-cyan-400 font-bold tracking-wide">لوحة قيادة الدراسة – بوصلة التميز الميكانيكي</p>
-        </div>
-
-        <div className="relative z-10">
-          <img 
-            src={profileImg} 
-            alt="Ayoub Taoufik" 
-            className="w-14 h-14 rounded-full border-2 border-yellow-500 object-cover shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:scale-105 transition-all"
-          />
-        </div>
-      </div>
-
-      {/* 2. قسم التحليلات العميقة والأرقام المحسوبة ديناميكياً لتتبع المستوى ومعدل الـ EFM */}
-      <div className="liquid-glass p-6 mb-6 relative overflow-hidden">
-        <div className="grid grid-cols-3 gap-4 text-center items-center">
-          {/* العمود الأيمن: نسب التمكن والتدريب */}
-          <div className="flex flex-col justify-between h-24 text-right">
-            <div>
-              <p className="text-gray-400 text-[11px] font-medium">التمكن العام</p>
-              <p className="text-xl font-black text-yellow-400">{stats.mastery}%</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-[10px] font-bold">التدريب المهني (Stage)</p>
-              <span className="text-[9px] text-red-400 font-extrabold bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">لم ينجز بعد</span>
-            </div>
-          </div>
-
-          {/* العمود الأوسط: العداد الدائري والمعدل العام الإجمالي */}
-          <div className="relative w-28 h-28 mx-auto flex flex-col items-center justify-center rounded-full border-2 border-cyan-500/40 bg-gradient-to-b from-cyan-500/10 to-transparent shadow-[0_0_30px_rgba(6,182,212,0.2)]">
-            <h2 className="text-3xl font-black text-white tracking-tight drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]">
-              {stats.gpa}
-            </h2>
-            <span className="text-[9px] text-gray-400 font-bold mt-0.5 uppercase">المعدل / 20</span>
-          </div>
-
-          {/* العمود الأيسر: عداد الموديولات وخروج الحساب */}
-          <div className="flex flex-col justify-between h-24 text-left">
-            <div>
-              <p className="text-gray-400 text-[11px] font-medium">موديولات مقيمة</p>
-              <p className="text-xl font-black text-cyan-400">{stats.evaluatedCount}/{modules.length}</p>
-            </div>
-            <button onClick={() => setUser(false)} className="text-[10px] text-gray-500 hover:text-red-400 font-bold transition underline text-left">
-              تسجيل خروج آمن
-            </button>
-          </div>
-        </div>
-
-        {/* شريط الإحصائيات الميكانيكية الإضافية المخفية - يظهر التحليل العميق */}
-        <div className="mt-5 pt-4 border-t border-white/5 grid grid-cols-2 gap-2 text-xs text-gray-400">
-          <div className="text-right">🏆 أعلى مادة تميز: <span className="text-emerald-400 font-bold">{stats.highest}</span></div>
-          <div className="text-left">📉 أدنى مادة للمراجعة: <span className="text-red-400 font-bold">{stats.lowest}</span></div>
-        </div>
-      </div>
-
-      {/* 3. شريط التنقل بين الخيارات والتبويبات بلمسة زجاجية وانسيابية كاملة */}
-      <div className="liquid-glass p-1.5 mb-6 flex justify-between items-center gap-1 text-xs md:text-sm">
-        <button 
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex-1 py-2 px-3 rounded-xl font-black transition-all flex items-center justify-center gap-1.5 ${activeTab === 'dashboard' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'hover:bg-white/5 text-gray-400'}`}
-        >
-          ⏱️ <span>لوحة القيادة</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('modules')}
-          className={`flex-1 py-2 px-3 rounded-xl font-black transition-all flex items-center justify-center gap-1.5 ${activeTab === 'modules' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'hover:bg-white/5 text-gray-400'}`}
-        >
-          🔧 <span>الموديولات</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('teachers')}
-          className={`flex-1 py-2 px-3 rounded-xl font-black transition-all flex items-center justify-center gap-1.5 ${activeTab === 'teachers' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'hover:bg-white/5 text-gray-400'}`}
-        >
-          📋 <span>الأساتذة</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('students')}
-          className={`py-2 px-4 rounded-xl font-black transition-all flex items-center justify-center ${activeTab === 'students' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'hover:bg-white/5 text-gray-400'}`}
-        >
-          👥 <span>المهام</span>
-        </button>
-      </div>
-
-      {/* 4. معالجة محتويات الأقسام الضخمة والشاملة */}
-      
-      {/* === [ قسم لوحة القيادة والمؤقت والحاسبة الحية ] === */}
-      {activeTab === 'dashboard' && (
-        <div className="space-y-4">
-          
-          {/* أداة بومودورو مدمجة لزيادة الإنتاجية والتركيز في الحفظ والدراسة */}
-          <div className="liquid-glass p-4 flex items-center justify-between bg-gradient-to-r from-purple-500/5 via-transparent to-transparent border-purple-500/20">
-            <div className="text-right">
-              <h4 className="text-xs font-black text-purple-400 flex items-center gap-1">🧠 مؤقت بومودورو للتركيز العالي ({timerMode})</h4>
-              <p className="text-[10px] text-gray-400 mt-0.5">ادرس لمدة 25 دقيقة بتركيز، ثم خذ 5 دقائق راحة لتجديد نشاطك الميكانيكي.</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-base font-black text-white bg-black/50 px-3 py-1 rounded-xl border border-white/10 tracking-wider">
-                {Math.floor(pomodoro / 60)}:{(pomodoro % 60 < 10 ? '0' : '')}{pomodoro % 60}
-              </span>
-              <div className="flex flex-col gap-1">
-                <button 
-                  onClick={() => setIsTimerRunning(!isTimerRunning)}
-                  className={`px-3 py-0.5 rounded-md text-[10px] font-bold transition ${isTimerRunning ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}
-                >
-                  {isTimerRunning ? 'إيقاف' : 'ابدأ'}
-                </button>
-                <button onClick={() => resetPomodoro('Work')} className="text-[9px] text-gray-500 hover:text-white transition">إعادة تعيين</button>
-              </div>
-            </div>
-          </div>
-
-          <h3 className="text-right text-xs font-black text-gray-400 flex items-center gap-1.5 pt-2">
-            🎯 <span>أولويات المراجعة الحالية وحساب المعدل المباشر:</span>
-          </h3>
-          
-          {modules.map((mod, index) => {
-            const masteryPercent = mod.mark !== '' ? ((parseFloat(mod.mark) / 20) * 100).toFixed(0) : 0;
-            return (
-              <div key={mod.id} className="liquid-glass p-5 flex flex-col relative overflow-hidden group">
-                {/* خط توهج ديكوري يتفاعل عند مرور مؤشر الفأرة */}
-                <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 to-blue-600 group-hover:w-1.5 transition-all"></div>
-                
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-gray-600 font-bold text-xs">#{index + 1}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">{mod.id}</span>
-                    <span className="text-[10px] font-black text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-md border border-yellow-500/20">Coef {mod.coef}</span>
-                  </div>
-                </div>
-                
-                <h4 className="text-sm font-bold text-gray-100 mb-3 text-right leading-snug">{mod.name}</h4>
-                
-                {/* شريط التقدم التفاعلي المتأثر بالنقطة المدخلة */}
-                <div className="w-full bg-white/5 h-1.5 rounded-full mb-4 overflow-hidden border border-white/5">
-                  <div 
-                    className="bg-gradient-to-l from-cyan-400 via-blue-500 to-indigo-600 h-full transition-all duration-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" 
-                    style={{ width: `${masteryPercent}%` }}
-                  ></div>
-                </div>
-                
-                <div className="flex justify-between items-center bg-black/30 p-2.5 rounded-xl border border-white/5">
-                  <input 
-                    type="number" 
-                    max="20" min="0" step="0.25"
-                    placeholder="أدخل نقطة الاختبار هنا /20"
-                    value={mod.mark}
-                    onChange={(e) => handleMarkChange(mod.id, e.target.value)}
-                    className="bg-transparent border-b border-gray-700 text-white focus:border-cyan-400 focus:outline-none w-36 text-center font-black text-sm placeholder:text-xs placeholder:text-gray-500"
-                  />
-                  <span className="text-xs font-bold text-gray-400">التمكن الفعلي: <span className="text-cyan-400">{masteryPercent}%</span></span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* === [ قسم الموديولات - تحكم كامل وحرية في الإضافة والحذف والتعديل ] === */}
-      {activeTab === 'modules' && (
-        <div className="space-y-4">
-          
-          {/* نموذج إضافة موديول دراسي جديد بحرية تامة لمشروعك */}
-          <form onSubmit={addModule} className="liquid-glass p-5 space-y-4 bg-gradient-to-b from-white/[0.01] to-transparent">
-            <h3 className="text-xs font-black text-yellow-400 text-right flex items-center gap-1">➕ إضافة موديول دراسي جديد للمنظومة</h3>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <input 
-                type="text" placeholder="رمز المادة (M206)" value={newModId} 
-                onChange={e => setNewModId(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl p-2.5 text-center focus:border-cyan-400 outline-none font-bold text-white placeholder:text-gray-600"
-              />
-              <input 
-                type="number" step="1" placeholder="المعامل (Coef)" value={newModCoef} 
-                onChange={e => setNewModCoef(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl p-2.5 text-center focus:border-cyan-400 outline-none font-bold text-white placeholder:text-gray-600"
-              />
-              <input 
-                type="text" placeholder="اسم الموديول بالكامل" value={newModName} 
-                onChange={e => setNewModName(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl p-2.5 text-right focus:border-cyan-400 outline-none font-bold text-white placeholder:text-gray-600"
-              />
-            </div>
-            <button type="submit" className="w-full py-2.5 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-black tracking-wide transition shadow-[0_4px_15px_rgba(6,182,212,0.1)]">
-              تثبيت الموديول وإضافته للوحة التحكم الرئيسية
-            </button>
-          </form>
-
-          {/* استعراض شجرة المواد الكاملة والقدرة على مسح وحذف التكرار والتنظيف الفوري */}
-          <div className="space-y-2">
-            <h3 className="text-right text-xs font-black text-gray-400 mb-1">📚 شجرة المواد الحالية والتحكم بالبيانات (إجمالي المعاملات: {stats.totalCoefs}):</h3>
-            {modules.map((mod) => (
-              <div key={mod.id} className="liquid-glass p-3.5 flex justify-between items-center bg-white/[0.01] hover:border-red-500/20 transition-all">
-                <button 
-                  onClick={() => deleteModule(mod.id)}
-                  className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1 rounded-xl hover:bg-red-500/30 font-bold transition"
-                >
-                  حذف المادة
-                </button>
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-extrabold text-gray-500">Coef {mod.coef}</span>
-                  <span className="text-[10px] font-extrabold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">{mod.id}</span>
-                </div>
-                <p className="text-xs font-bold text-gray-200 text-right max-w-[45%] truncate">{mod.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* === [ قسم إدارة الأساتذة والدليل الإرشادي وملاحظات الـ EFM ] === */}
-      {activeTab === 'teachers' && (
-        <div className="space-y-4">
-          
-          {/* نموذج إضافة أستاذ وموجه جديد بشكل فوري وديناميكي وحر */}
-          <form onSubmit={addTeacher} className="liquid-glass p-5 space-y-3 bg-gradient-to-b from-white/[0.01] to-transparent">
-            <h3 className="text-xs font-black text-yellow-400 text-right">📋 إضافة بيانات أستاذ أو مرشد أكاديمي جديد</h3>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <input 
-                type="email" placeholder="البريد الإلكتروني" value={newTeacherContact} 
-                onChange={e => setNewTeacherContact(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl p-2.5 text-center focus:border-cyan-400 outline-none text-white font-bold"
-              />
-              <input 
-                type="text" placeholder="المواد المسندة له" value={newTeacherSub} 
-                onChange={e => setNewTeacherSub(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl p-2.5 text-right focus:border-cyan-400 outline-none text-white font-bold"
-              />
-              <input 
-                type="text" placeholder="اسم الأستاذ الكامل" value={newTeacherName} 
-                onChange={e => setNewTeacherName(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl p-2.5 text-right focus:border-cyan-400 outline-none text-white font-bold"
-              />
-            </div>
-            <input 
-              type="text" placeholder="توجيهات أو ملاحظات الأستاذ بخصوص الاختبارات والرسومات الرسمية" value={newTeacherNote} 
-              onChange={e => setNewTeacherNote(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-right focus:border-cyan-400 outline-none text-white font-bold"
-            />
-            <button type="submit" className="w-full py-2.5 bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500/20 text-yellow-400 rounded-xl text-xs font-black transition">
-              حفظ بيانات الأستاذ وتحديث ملف الموجهين
-            </button>
-          </form>
-
-          {/* استعراض دليل الأساتذة */}
-          <div className="space-y-2">
-            <h3 className="text-right text-xs font-black text-gray-400 mb-1">👥 أعضاء هيئة التدريس والإرشادات الفنية:</h3>
-            {teachers.map((t) => (
-              <div key={t.id} className="liquid-glass p-4 flex flex-col space-y-2 bg-white/[0.01]">
-                <div className="flex justify-between items-center">
-                  <button 
-                    onClick={() => deleteTeacher(t.id)}
-                    className="text-[10px] text-red-400 hover:underline"
-                  >
-                    حذف السجل
-                  </button>
-                  <span className="text-[10px] text-cyan-400 font-black bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">{t.subject}</span>
-                  <h4 className="text-xs font-black text-white text-right">{t.name}</h4>
-                </div>
-                {t.note && <p className="text-[11px] text-gray-400 text-right bg-black/20 p-2 rounded-lg border border-white/5 leading-relaxed">{t.note}</p>}
-                {t.contact && <p className="text-[10px] text-gray-500 font-mono text-right">📬 الاتصال: {t.contact}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* === [ قسم قائمة المهام (To-Do List) لجدولة المراجعة والرسومات الميكانيكية ] === */}
-      {activeTab === 'students' && (
-        <div className="space-y-4">
-          
-          {/* إضافة مهمة جديدة للدراسة والمراجعة */}
-          <form onSubmit={addTask} className="liquid-glass p-4 space-y-3 bg-white/[0.01]">
-            <h3 className="text-xs font-black text-cyan-400 text-right">📝 جدولة المهام والرسومات الميكانيكية اليومية</h3>
-            <div className="flex gap-2">
-              <select 
-                value={newTaskPriority}
-                onChange={e => setNewTaskPriority(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl px-2 text-xs focus:border-cyan-400 outline-none font-bold text-gray-300"
-              >
-                <option value="high">الأهمية: عالية 🛑</option>
-                <option value="medium">الأهمية: متوسطة ⚠️</option>
-                <option value="low">الأهمية: منخفضة ✅</option>
-              </select>
-              <input 
-                type="text" 
-                placeholder="أكتب عنوان المهمة (مثال: إنهاء كود CNC لمخرطة M209)..." 
-                value={newTaskText} 
-                onChange={e => setNewTaskText(e.target.value)}
-                className="flex-1 bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-right focus:border-cyan-400 outline-none text-white font-bold"
-              />
-            </div>
-            <button type="submit" className="w-full py-2 bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-xl text-xs font-black hover:bg-cyan-500/30 transition">
-              إضافة المهمة لجدول المذاكرة اليومي
-            </button>
-          </form>
-
-          {/* عرض مهام الطالب المخصصة */}
-          <div className="space-y-2">
-            <h3 className="text-right text-xs font-black text-gray-400 mb-1">📋 قائمة المهام النشطة:</h3>
-            {tasks.length === 0 ? (
-              <p className="text-center text-xs text-gray-500 py-6">تهانينا يا أيوب! لا توجد أي مهام معلقة حالياً.</p>
-            ) : (
-              tasks.map((task) => (
-                <div key={task.id} className={`liquid-glass p-3.5 flex justify-between items-center transition-all ${task.completed ? 'opacity-40 line-through' : ''}`}>
-                  <button 
-                    onClick={() => deleteTask(task.id)}
-                    className="text-[10px] text-red-400 hover:text-red-300 bg-red-500/5 px-2 py-0.5 rounded border border-red-500/10"
-                  >
-                    حذف
-                  </button>
-                  
-                  <div className="flex items-center gap-3 flex-1 justify-end">
-                    <p className="text-xs font-bold text-gray-200 text-right">{task.text}</p>
-                    <input 
-                      type="checkbox" 
-                      checked={task.completed} 
-                      onChange={() => toggleTask(task.id)}
-                      className="w-4 h-4 rounded border-gray-600 bg-black/40 text-cyan-500 focus:ring-0 cursor-pointer"
-                    />
-                  </div>
-                  
-                  {/* شارة الأهمية */}
-                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border mr-3 ${task.priority === 'high' ? 'bg-red-500/10 text-red-400 border-red-500/20' : task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-                    {task.priority === 'high' ? 'عالية' : task.priority === 'medium' ? 'متوسطة' : 'عادية'}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-        </div>
-      )}
-
+    <div
+      className={
+        'relative rounded-3xl border border-white/15 bg-white/[0.06] backdrop-blur-2xl ' +
+        'shadow-[0_8px_32px_rgba(0,0,0,0.35)] before:absolute before:inset-x-0 before:top-0 ' +
+        'before:h-px before:rounded-t-3xl before:bg-gradient-to-r before:from-transparent ' +
+        'before:via-white/60 before:to-transparent ' +
+        className
+      }
+    >
+      {children}
     </div>
   );
 }
 
-export default App;
+function StatCard({ label, value, unit, icon: Icon, accent }) {
+  return (
+    <GlassPanel className="p-5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-white/60">{label}</span>
+        <span className="grid h-8 w-8 place-items-center rounded-xl" style={{ background: `${accent}22`, color: accent }}>
+          <Icon size={15} strokeWidth={2} />
+        </span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="font-mono text-2xl font-medium" style={{ color: accent }}>{value}</span>
+        {unit && <span className="text-xs text-white/40">{unit}</span>}
+      </div>
+    </GlassPanel>
+  );
+}
+
+function CategoryBadge({ catId }) {
+  const c = catInfo(catId);
+  return (
+    <span
+      className="rounded-full px-2.5 py-1 text-[10px] font-medium"
+      style={{ background: `${c.color}1f`, color: c.color, border: `1px solid ${c.color}40` }}
+    >
+      {c.label}
+    </span>
+  );
+}
+
+function ComingSoon({ icon: Icon, title }) {
+  return (
+    <GlassPanel className="flex flex-col items-center gap-3 p-14 text-center">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-dashed border-fuchsia-300/40 text-fuchsia-300">
+        <Icon size={20} strokeWidth={1.5} />
+      </div>
+      <p className="text-sm text-white/70">قريباً — {title}</p>
+      <p className="max-w-xs text-xs text-white/40">
+        هذه الوحدة جاهزة في نظام التنقل وستُبنى بنفس تصميم الزجاج السائل.
+      </p>
+    </GlassPanel>
+  );
+}
+
+// ============================================================================
+// صفحة: لوحة القيادة
+// ============================================================================
+function Dashboard() {
+  const totalHours = useMemo(() => SUBJECTS.reduce((s, m) => s + m.hours, 0), []);
+  const coefCounts = useMemo(() => {
+    const acc = { 4: 0, 3: 0, 2: 0, 1: 0 };
+    SUBJECTS.forEach((m) => (acc[m.coef] += 1));
+    return acc;
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        code="DSH · 01"
+        title="لوحة القيادة"
+        desc="نظرة عامة على السنة الثانية TSMFM — 18 وحدة موزعة على 6 محاور + التدريب."
+      />
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard label="إجمالي الوحدات" value="18" unit="+ تدريب" icon={Layers} accent="#c084fc" />
+        <StatCard label="إجمالي الساعات" value={totalHours} unit="سا" icon={Clock} accent="#38bdf8" />
+        <StatCard label="وحدات معامل 4" value={coefCounts[4]} unit="وحدات إستراتيجية" icon={FileCheck2} accent="#facc15" />
+        <StatCard label="التدريب" value={STAGE.duration} icon={Target} accent="#34d399" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <GlassPanel className="p-5">
+          <h3 className="mb-4 text-sm font-semibold text-white/90">توزيع الوحدات حسب المحور</h3>
+          <ul className="space-y-3">
+            {CATEGORIES.map((c) => {
+              const count = SUBJECTS.filter((m) => m.cat === c.id).length;
+              const pct = Math.round((count / SUBJECTS.length) * 100);
+              return (
+                <li key={c.id}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="text-white/70">{c.label}</span>
+                    <span className="font-mono text-white/50">{count}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.color }} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </GlassPanel>
+
+        <GlassPanel className="p-5">
+          <h3 className="mb-4 text-sm font-semibold text-white/90">توزيع المعامِلات (Coefficients)</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {Object.entries(coefCounts).reverse().map(([coef, count]) => (
+              <div key={coef} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+                <p className="font-mono text-xl text-white">{count}</p>
+                <p className="text-[11px] text-white/50">وحدات بمعامل {coef}</p>
+              </div>
+            ))}
+          </div>
+        </GlassPanel>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// صفحة: الوحدات الدراسية
+// ============================================================================
+function ModulesPage() {
+  return (
+    <div className="space-y-6">
+      <PageHeader code="MOD · 02" title="الوحدات الدراسية" desc="شجرة الوحدات الكاملة لبرنامج TSMFM السنة الثانية." />
+
+      {CATEGORIES.map((cat) => {
+        const items = SUBJECTS.filter((m) => m.cat === cat.id);
+        return (
+          <div key={cat.id}>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full" style={{ background: cat.color }} />
+              <h3 className="text-sm font-semibold text-white/85">{cat.label}</h3>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((m) => (
+                <GlassPanel key={m.code} className="p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="font-mono text-[11px]" style={{ color: cat.color }}>{m.code}</span>
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/60">
+                      Coef {m.coef}
+                    </span>
+                  </div>
+                  <p className="text-[13px] leading-snug text-white/85">{m.name}</p>
+                  <p className="mt-2 text-[11px] text-white/40">{m.hours} ساعة</p>
+                </GlassPanel>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      <GlassPanel className="flex items-center justify-between p-4">
+        <div>
+          <span className="font-mono text-[11px] text-emerald-300">{STAGE.code}</span>
+          <p className="text-[13px] text-white/85">{STAGE.name}</p>
+        </div>
+        <CategoryBadge catId="fabrication" />
+        <span className="text-[11px] text-white/50">{STAGE.duration}</span>
+      </GlassPanel>
+    </div>
+  );
+}
+
+function PageHeader({ code, title, desc }) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="font-mono text-[11px] text-fuchsia-300">{code}</span>
+        <span className="h-px w-8 bg-fuchsia-300/40" />
+      </div>
+      <h1 className="text-2xl font-bold text-white">{title}</h1>
+      {desc && <p className="mt-1 max-w-xl text-[13px] text-white/50">{desc}</p>}
+    </div>
+  );
+}
+
+// ============================================================================
+// التخطيط العام — Sidebar + Topbar + محتوى الصفحة النشطة
+// ============================================================================
+function Sidebar({ active, onSelect, open, onClose }) {
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={onClose} />}
+      <aside
+        className={
+          'fixed z-30 h-screen w-64 shrink-0 overflow-y-auto border-e border-white/10 bg-white/[0.04] ' +
+          'p-4 backdrop-blur-2xl transition-transform md:sticky md:top-0 md:translate-x-0 ' +
+          (open ? 'translate-x-0' : 'translate-x-full md:translate-x-0')
+        }
+        style={{ insetInlineEnd: 0 }}
+      >
+        <div className="mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-400 to-cyan-400 font-mono text-[11px] font-semibold text-black">
+            STOS
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-white">بوصلة الدراسة</p>
+            <p className="font-mono text-[10px] text-white/40">Study OS · TSMFM</p>
+          </div>
+        </div>
+
+        <nav className="space-y-5">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="mb-1 px-2 font-mono text-[10px] uppercase tracking-wide text-white/35">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = active === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { onSelect(item.id); onClose?.(); }}
+                    className={
+                      'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition ' +
+                      (isActive
+                        ? 'border-e-2 border-fuchsia-400 bg-fuchsia-400/15 text-white'
+                        : 'text-white/60 hover:bg-white/5 hover:text-white/90')
+                    }
+                  >
+                    <Icon size={16} strokeWidth={2} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+      </aside>
+    </>
+  );
+}
+
+function Topbar({ activeLabel, onMenu }) {
+  return (
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-white/10 bg-black/20 px-5 backdrop-blur-xl">
+      <button onClick={onMenu} className="text-white/70 md:hidden">
+        <Menu size={19} />
+      </button>
+      <h2 className="text-[15px] font-semibold text-white">{activeLabel}</h2>
+      <div className="ms-auto hidden max-w-xs flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:flex">
+        <Search size={14} className="text-white/40" />
+        <input placeholder="بحث سريع..." className="w-full bg-transparent text-[12px] text-white outline-none placeholder:text-white/30" />
+      </div>
+      <button className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-white/70">
+        <Bell size={16} />
+      </button>
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-400 to-cyan-400 text-sm font-semibold text-black">
+        A
+      </span>
+    </header>
+  );
+}
+
+// ============================================================================
+// الجذر
+// ============================================================================
+const PAGE_LABELS = Object.fromEntries(NAV_GROUPS.flatMap((g) => g.items).map((i) => [i.id, i.label]));
+
+export default function App() {
+  const [active, setActive] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const stubIcon = (id) => NAV_GROUPS.flatMap((g) => g.items).find((i) => i.id === id)?.icon ?? Sparkles;
+
+  return (
+    <div dir="rtl" className="relative min-h-screen overflow-x-hidden bg-[#0a0714] text-white">
+      {/* خلفية الزجاج السائل: توهجات لونية عائمة خلف كل شيء */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-40 -left-32 h-[420px] w-[420px] rounded-full bg-fuchsia-600/30 blur-[120px]" />
+        <div className="absolute top-1/3 -right-24 h-[380px] w-[380px] rounded-full bg-cyan-500/20 blur-[120px]" />
+        <div className="absolute bottom-0 left-1/4 h-[300px] w-[300px] rounded-full bg-violet-700/25 blur-[110px]" />
+      </div>
+
+      <div className="flex">
+        <Sidebar active={active} onSelect={setActive} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar activeLabel={PAGE_LABELS[active]} onMenu={() => setSidebarOpen(true)} />
+          <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-7">
+            {active === 'dashboard' && <Dashboard />}
+            {active === 'modules' && <ModulesPage />}
+            {active !== 'dashboard' && active !== 'modules' && (
+              <div className="space-y-6">
+                <PageHeader code="—" title={PAGE_LABELS[active]} />
+                <ComingSoon icon={stubIcon(active)} title={PAGE_LABELS[active]} />
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
