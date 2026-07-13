@@ -563,7 +563,7 @@ const xpInLevel = modules.length > 0 ? Math.round((gradedModulesCount / modules.
      RENDER
      ============================================================ */
   return (
-    <div className="min-h-screen relative" style={{ background: 'var(--bg-0)', color: 'var(--ink-0)' }}>
+  <div className="min-h-screen relative" style={{ background: 'var(--bg-0)', color: 'var(--ink-0)' }} dir="rtl">
       <div className="ambient-bg">
         <div className="ambient-blob blob-a" />
         <div className="ambient-blob blob-b" />
