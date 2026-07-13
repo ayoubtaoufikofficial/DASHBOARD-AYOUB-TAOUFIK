@@ -466,9 +466,12 @@ export default function App() {
   }, [modules]);
 
   const attendanceRate = sessions.total ? (sessions.attended / sessions.total) * 100 : 0;
-  const xp = studyHours * 12;
-  const level = Math.floor(xp / 500) + 1;
-  const xpInLevel = ((xp % 500) / 500) * 100;
+ // حساب عدد المواد المنقوطة ديناميكياً
+const gradedModulesCount = modules.filter(m => m.note && m.note !== '-').length;
+const xp = gradedModulesCount;
+const level = 1;
+const xpInLevel = modules.length > 0 ? Math.round((gradedModulesCount / modules.length) * 100) : 0;
+ 
   const overallPct = overall != null ? (overall / 20) * 100 : 0;
   const performanceScore = Math.round(overallPct * 0.5 + attendanceRate * 0.3 + completion * 0.2);
   const studyRatio = clamp((studyHours / (weeklyGoalHours || 1)) * 100, 0, 100);
