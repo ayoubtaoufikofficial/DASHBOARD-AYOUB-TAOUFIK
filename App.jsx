@@ -1020,3 +1020,42 @@ function AiTab({ state, moduleAvg }) {
     </div>
   );
 }
+// --- بداية التتمة: إصلاح الـ Sidebar ووضع صورة البروفايل ---
+
+{/* هذا الجزء يوضع في مكان الـ Sidebar في كودك الأصلي */}
+<aside
+  className={`fixed inset-y-0 left-0 z-50 w-72 bg-gray-900 transition-transform duration-300 lg:static lg:translate-x-0 shadow-2xl ${
+    sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+  }`}
+>
+  <div className="h-full p-4 flex flex-col">
+    {/* بطاقة البروفايل الشخصي */}
+    <div className="flex items-center gap-3 px-2 py-4 border-b border-gray-800">
+      <img 
+        src="/FB_IMG_1750515617631.jpg" 
+        alt="Ayoub Taoufik" 
+        className="w-12 h-12 rounded-full object-cover border-2 border-blue-500"
+      />
+      <div className="flex-1">
+        <h2 className="font-bold text-white text-sm">Ayoub Taoufik</h2>
+        <p className="text-[10px] text-gray-400">TSMFM Student</p>
+      </div>
+      {/* زر إغلاق القائمة في الموبايل */}
+      <button className="lg:hidden p-1 text-gray-400" onClick={() => setSidebarOpen(false)}>
+        <X size={20} />
+      </button>
+    </div>
+
+    {/* باقي القائمة يوضع هنا... */}
+  </div>
+</aside>
+
+{/* زر فتح القائمة (يجب أن يكون في الجزء العلوي من الـ Main) */}
+<button 
+  className="lg:hidden p-2 text-white bg-gray-800 rounded-lg" 
+  onClick={() => setSidebarOpen(true)}
+>
+  <Menu size={24} />
+</button>
+
+// --- نهاية التتمة ---
