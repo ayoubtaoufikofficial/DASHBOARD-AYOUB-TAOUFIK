@@ -325,7 +325,14 @@ export default function App() {
               <div className="flex items-center gap-2 text-xs text-slate-500 font-mono tracking-widest">
                 TSMFM · السنة الثانية <LED active />
               </div>
-              <div className="text-center my-6">
+              <div className="text-center my-6 px-4">
+  <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-wide bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] uppercase leading-tight">
+    Ayoub Taoufik
+  </h1>
+  <p className="text-xs sm:text-sm md:text-base text-cyan-400/80 font-medium tracking-widest mt-2 uppercase">
+    لوحة قيادة الدراسة — بوصلة التميز
+  </p>
+</div>
   <h1 className="text-4xl md:text-6xl font-black tracking-wide bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] uppercase">
     Ayoub Taoufik
   </h1>
