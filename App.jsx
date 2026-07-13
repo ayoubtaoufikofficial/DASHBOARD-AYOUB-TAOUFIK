@@ -417,7 +417,10 @@ export default function App() {
     setToasts((t) => [...t, { id, text, kind }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
   };
-
+// الحسابات الديناميكية لنسبة التقدم
+  const totalModules = modules.length; 
+  const gradedModules = modules.filter(m => m.note && m.note !== '-').length;
+  const progressPercentage = totalModules > 0 ? Math.round((gradedModules / totalModules) * 100) : 0;
   /* ---------- reactive grading engine ---------- */
   const moduleFinal = (m) => {
     const entries = GTYPES.map((g) => [g.key, m.grades[g.key]]).filter(([, v]) => v !== '' && v != null);
